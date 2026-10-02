@@ -1,1 +1,174 @@
-
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wallet migration helper (32 EVM chains)</title>
+<style>
+:root{--bg:#f4f6f5;--card:#fff;--tx:#12201b;--mu:#58665f;--bd:#d5ddd8;--ac:#0b6b52;--acx:#fff;--wa:#8a5200;--er:#b3261e}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1512;--card:#16201b;--tx:#e7efea;--mu:#9aaaa2;--bd:#2a3a32;--ac:#3fcf9f;--acx:#04251a;--wa:#f0b35a;--er:#ff8a80}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 Georgia,serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+main{max-width:640px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:1.6rem;margin:0 0 4px}.sub,.mu{color:var(--mu)}
+section{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:16px;margin-bottom:14px}
+button{font:inherit;font-weight:600;background:var(--ac);color:var(--acx);border:0;border-radius:8px;padding:12px 16px;cursor:pointer;width:100%}
+button.s{width:auto;padding:6px 12px;font-size:.9rem}
+button:disabled{opacity:.5}
+button:focus-visible,input:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+input[type=text]{width:100%;font:14px ui-monospace,Menlo,monospace;padding:12px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx)}
+.row{display:flex;gap:10px;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--bd)}
+.row:first-child{border-top:0}.row div{min-width:0;overflow-wrap:anywhere}
+.er{color:var(--er)}.wa{color:var(--wa)}.ok{color:var(--ac)}
+#msg{min-height:1.4em}[hidden]{display:none!important}
+</style></head>
+<body><main>
+<h1>Wallet migration helper</h1>
+<p class="sub">Scans 32 EVM chains and moves your own assets to a new wallet. Each chain needs your approval in your wallet.</p>
+ 
+<section id="s1"><button id="bConnect">Connect wallet and scan</button></section>
+ 
+<section id="s2" hidden>
+<p class="mu" id="who"></p>
+<div id="list"></div></section>
+ 
+<section id="s3" hidden>
+<label for="dest"><b>New wallet address</b></label>
+<input type="text" id="dest" placeholder="0x… (paste your new wallet address)" autocomplete="off" spellcheck="false">
+<p class="mu">Migration starts as soon as you paste a valid address. You will see the full address once to confirm, and your wallet shows it again with each approval. Never stored or pre-filled.</p>
+<button id="bAll">Migrate all chains with a balance</button></section>
+<p id="msg" role="status"></p>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+<script>
+// ---- CONFIG: edit freely. Public RPCs change; replace any that fail with your own. ----
+const CHAINS=[
+[1,"Ethereum","ETH","https://ethereum-rpc.publicnode.com"],[10,"Optimism","ETH","https://mainnet.optimism.io"],
+[56,"BNB Chain","BNB","https://bsc-dataseed.binance.org"],[100,"Gnosis","xDAI","https://rpc.gnosischain.com"],
+[137,"Polygon","POL","https://polygon-rpc.com"],[146,"Sonic","S","https://rpc.soniclabs.com"],
+[324,"zkSync Era","ETH","https://mainnet.era.zksync.io"],[5000,"Mantle","MNT","https://rpc.mantle.xyz"],
+[8453,"Base","ETH","https://mainnet.base.org"],[42161,"Arbitrum One","ETH","https://arb1.arbitrum.io/rpc"],
+[42170,"Arbitrum Nova","ETH","https://nova.arbitrum.io/rpc"],[42220,"Celo","CELO","https://forno.celo.org"],
+[43114,"Avalanche","AVAX","https://api.avax.network/ext/bc/C/rpc"],[59144,"Linea","ETH","https://rpc.linea.build"],
+[534352,"Scroll","ETH","https://rpc.scroll.io"],[81457,"Blast","ETH","https://rpc.blast.io"],
+[34443,"Mode","ETH","https://mainnet.mode.network"],[7777777,"Zora","ETH","https://rpc.zora.energy"],
+[252,"Fraxtal","frxETH","https://rpc.frax.com"],[1088,"Metis","METIS","https://andromeda.metis.io/?owner=1088"],
+[1284,"Moonbeam","GLMR","https://rpc.api.moonbeam.network"],[1285,"Moonriver","MOVR","https://rpc.api.moonriver.moonbeam.network"],
+[25,"Cronos","CRO","https://evm.cronos.org"],[1313161554,"Aurora","ETH","https://mainnet.aurora.dev"],
+[169,"Manta Pacific","ETH","https://pacific-rpc.manta.network/http"],[480,"World Chain","ETH","https://worldchain-mainnet.g.alchemy.com/public"],
+[130,"Unichain","ETH","https://mainnet.unichain.org"],[57073,"Ink","ETH","https://rpc-gel.inkonchain.com"],
+[1868,"Soneium","ETH","https://rpc.soneium.org"],[60808,"BOB","ETH","https://rpc.gobob.xyz"],
+[80094,"Berachain","BERA","https://rpc.berachain.com"],[999,"HyperEVM","HYPE","https://rpc.hyperliquid.xyz/evm"]];
+// Common tokens only. Add more as [symbol, address]. Full token discovery needs an indexer API.
+const TOKENS={
+1:[["USDC","0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"],["USDT","0xdAC17F958D2ee523a2206206994597C13D831ec7"],["DAI","0x6B175474E89094C44Da98b954EedeAC495271d0F"],["WETH","0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"]],
+10:[["USDC","0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85"],["USDT","0x94b008aA00579c1307B0EF2c499aD98a8ce58e58"]],
+56:[["USDT","0x55d398326f99059fF775485246999027B3197955"],["USDC","0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d"]],
+137:[["USDC","0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"],["USDT","0xc2132D05D31c914a87C6611C10748AEb04B58e8F"]],
+8453:[["USDC","0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"]],
+42161:[["USDC","0xaf88d065e77c8cC2239327C5EDb3A432268e5831"],["USDT","0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"]],
+43114:[["USDC","0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E"],["USDT","0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7"]]};
+// ---------------------------------------------------------------------------------------
+const $=id=>document.getElementById(id);
+const ABI=["function balanceOf(address) view returns (uint256)","function decimals() view returns (uint8)","function transfer(address,uint256) returns (bool)"];
+const iface=new ethers.Interface(ABI);
+let acct,found={};
+const say=(t,c)=>{$('msg').textContent=t;$('msg').className=c||''};
+const err=e=>say(e.shortMessage||e.message||String(e),'er');
+const timeout=(p,ms)=>Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error('timeout')),ms))]);
+ 
+async function scanChain([id,name,sym,rpc]){
+  const p=new ethers.JsonRpcProvider(rpc,id,{staticNetwork:true});
+  const out={id,name,sym,native:0n,tokens:[]};
+  out.native=await timeout(p.getBalance(acct),8000);
+  for(const [s,a] of TOKENS[id]||[]){
+    try{const c=new ethers.Contract(a,ABI,p);const b=await timeout(c.balanceOf(acct),8000);
+      if(b>0n) out.tokens.push({sym:s,addr:a,bal:b,dec:Number(await c.decimals())});}catch{}
+  }
+  return out;
+}
+async function connect(){
+  try{
+    if(!window.ethereum) return say('No wallet detected. Use a browser with a wallet extension or your wallet app\u2019s browser.','er');
+    const a=await new ethers.BrowserProvider(window.ethereum).send('eth_requestAccounts',[]);
+    acct=ethers.getAddress(a[0]);
+    $('s1').hidden=true;$('s2').hidden=false;$('who').textContent='Scanning '+CHAINS.length+' chains for '+acct+'\u2026';
+    window.ethereum.on?.('accountsChanged',()=>location.reload());
+    let done=0,failed=[];
+    await Promise.all(CHAINS.map(async c=>{
+      try{const r=await scanChain(c);if(r.native>0n||r.tokens.length){found[c[0]]=r;draw()}}
+      catch{failed.push(c[1])}
+      $('who').textContent='Scanned '+(++done)+' of '+CHAINS.length+' chains for '+acct;
+    }));
+    $('s3').hidden=false;
+    if(!Object.keys(found).length) $('list').innerHTML='<p class="mu">No balances found on these chains.</p>';
+    if(failed.length) say('Could not reach: '+failed.join(', ')+'. Their RPC may be down; edit CHAINS to replace it.','wa');
+  }catch(e){err(e)}
+}
+function draw(){
+  $('list').innerHTML='';
+  Object.values(found).forEach(r=>{
+    const d=document.createElement('div');d.className='row';
+    const t=[];if(r.native>0n)t.push(Number(ethers.formatEther(r.native)).toFixed(5)+' '+r.sym);
+    r.tokens.forEach(k=>t.push(ethers.formatUnits(k.bal,k.dec)+' '+k.sym));
+    const l=document.createElement('div');l.innerHTML='<b></b><br><span class="mu"></span>';
+    l.querySelector('b').textContent=r.name;l.querySelector('span').textContent=t.join(', ');
+    const b=document.createElement('button');b.className='s';b.textContent='Migrate';b.onclick=()=>run([r.id]);
+    d.append(l,b);$('list').appendChild(d);
+  });
+}
+async function migrate(id){
+  const r=found[id],hex='0x'+id.toString(16);
+  try{await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:hex}]})}
+  catch(e){
+    if(e.code!==4902) throw e;
+    const c=CHAINS.find(x=>x[0]===id);
+    await window.ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:hex,chainName:c[1],rpcUrls:[c[3]],nativeCurrency:{name:c[2],symbol:c[2],decimals:18}}]});
+  }
+  const prov=new ethers.BrowserProvider(window.ethereum);
+  const dest=ethers.getAddress($('dest').value.trim());
+  const calls=[];let gas=0n;
+  for(const k of r.tokens){
+    const data=iface.encodeFunctionData('transfer',[dest,k.bal]);
+    try{gas+=await prov.estimateGas({from:acct,to:k.addr,data});calls.push({to:k.addr,value:0n,data})}catch{}
+  }
+  const fee=await prov.getFeeData(),price=fee.maxFeePerGas??fee.gasPrice??0n;
+  const nb=await prov.getBalance(acct);gas+=21000n;
+  const reserve=gas*price*2n; // generous: covers L2 data fees and price moves
+  if(nb>reserve) calls.push({to:dest,value:nb-reserve,data:'0x'});
+  if(!calls.length) throw new Error(r.name+': nothing sendable (balance too small for fees).');
+  const isC=(await prov.getCode(dest))!=='0x';
+  if(isC && !confirm('WARNING: the destination is a smart contract on '+r.name+'. Continue only if it is a wallet you control.')) throw new Error('Cancelled on '+r.name+'.');
+  let atomic=false;
+  try{const cap=await prov.send('wallet_getCapabilities',[acct,[hex]]);const s=cap?.[hex]?.atomic?.status;atomic=(s==='supported'||s==='ready')}catch{}
+  say(r.name+': '+(atomic?'your wallet supports batching, 1 approval needed.':'your wallet does not support batching, '+calls.length+' approvals needed.'));
+  if(atomic){
+    await prov.send('wallet_sendCalls',[{version:'2.0.0',from:acct,chainId:hex,atomicRequired:true,calls:calls.map(c=>({to:c.to,value:'0x'+c.value.toString(16),data:c.data}))}]);
+  }else{
+    const s=await prov.getSigner(),txs=[];
+    for(const c of calls){txs.push(await s.sendTransaction(c))} // next prompt appears right away
+    await Promise.all(txs.map(t=>t.wait()));
+  }
+  say(r.name+': submitted.','ok');
+}
+let running=false,lastAuto='';
+async function run(ids){
+  if(running) return;running=true;
+  try{await runInner(ids)}finally{running=false}
+}
+async function runInner(ids){
+  try{
+    if(!ethers.isAddress($('dest').value.trim())) return say('Enter a valid new wallet address first.','er');
+    if(ethers.getAddress($('dest').value.trim())===acct) return say('The new address is the same as the connected wallet.','er');
+    const d=ethers.getAddress($('dest').value.trim());
+    if(!confirm('Send everything on '+ids.length+' chain(s) to this address:\n\n'+d+'\n\nPress OK only if this is your new wallet. Your wallet will ask you to approve the transfers.')) return;
+    for(const id of ids){await migrate(id)}
+    say('Done. Check each chain\u2019s explorer to confirm.','ok');
+  }catch(e){err(e)}
+}
+$('bConnect').onclick=connect;
+$('bAll').onclick=()=>run(Object.keys(found).map(Number));
+let t;$('dest').addEventListener('input',()=>{clearTimeout(t);t=setTimeout(()=>{
+  const v=$('dest').value.trim();
+  if(v&&v!==lastAuto&&ethers.isAddress(v)&&Object.keys(found).length){lastAuto=v;run(Object.keys(found).map(Number))}
+},700)});
+</script></body></html>
+ 
