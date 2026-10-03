@@ -42,27 +42,39 @@ footer{color:var(--mu);font-size:.82rem;text-align:center;margin-top:24px}
 dialog{border:1px solid var(--bd);border-radius:16px;background:var(--sf);color:var(--tx);width:calc(100% - 32px);max-width:480px;padding:26px;box-shadow:0 24px 60px rgba(0,0,0,.35)}
 dialog::backdrop{background:rgba(5,8,20,.65);backdrop-filter:blur(3px)}
 dialog h3{margin:0 0 12px;font-size:1.15rem}
-.addr{font:14px ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all;background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:12px}
-dialog ul{margin:0 0 18px;padding-left:18px;color:var(--mu)}
+.addr{white-space:pre-wrap;font:14px ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all;background:var(--sf2);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:12px}
+dialog ul{margin:0 0 18px;padding-left:18px;color:var(--mu);max-height:36vh;overflow:auto}
 .acts{display:flex;gap:10px}.acts .btn{flex:1}
 @media (max-width:520px){.steps li{font-size:.75rem;padding:8px}.steps i{display:none}.card{padding:16px}}
+.bar{height:8px;background:var(--sf2);border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;width:0;background:var(--ac);transition:width .3s}
+.rec{border-left:4px solid var(--wa)}.rec a{color:var(--ac)}
 </style></head>
 <body><div class="wrap">
 <header class="top"><div class="logo" aria-hidden="true"></div><div><h1>Asset Migration</h1><p>Move your assets to a new wallet across 32 EVM chains.</p></div></header>
 <ol class="steps"><li class="st on"><i>1</i>Connect</li><li class="st"><i>2</i>Review assets</li><li class="st"><i>3</i>Destination</li></ol>
 <div id="msg" class="msg" role="status" hidden></div>
+<section id="prog" class="card" hidden><h2>Migration in progress</h2><p class="mu" id="pTxt" style="margin:0 0 12px"></p><div class="bar"><i id="pBar"></i></div>
+<p class="mu" id="pNext" hidden style="margin:14px 0 0">Next steps: update your new address in exchanges and withdrawal whitelists, airdrop and claim registrations, ENS records, and any payroll or vesting. Then revoke old approvals on the old wallet at revoke.cash.</p></section>
 <section id="s1" class="card"><h2>Connect your wallet</h2>
 <p class="mu">Connect the wallet you are moving assets out of. Balances are read from 32 networks. Nothing is sent until you approve it in your wallet.</p>
-<button class="btn" id="bConnect">Connect wallet</button></section>
-<section id="s2" class="card" hidden><div class="ch"><div><h2>Detected assets</h2><p class="mu" id="who" style="margin:0"></p></div><span class="mu" id="count"></span></div><div id="list"></div></section>
+<button class="btn" id="bConnect">Connect EVM wallet</button>
+<button class="btn ghost" id="bSol" style="margin-top:10px">Connect Solana wallet</button></section>
+<section id="rec" class="card rec" hidden><h2>Fewer approvals with a different wallet</h2>
+<p class="mu">Your wallet approves every transfer separately. With your current selection that is <b id="recN">0</b> approvals. A wallet that supports batched transfers (EIP-5792) can approve a whole chain in one tap.</p>
+<p class="mu">Support is still rolling out, so check the current list at <a href="https://www.eip5792.xyz/ecosystem/wallets" target="_blank" rel="noopener noreferrer">eip5792.xyz</a>. Smart-account wallets, and wallets that offer a smart-account upgrade for regular accounts (MetaMask does), are the usual candidates.</p>
+<p class="mu" style="margin:0">If you switch, use the wallet's official app or extension on your own device, and never type a recovery phrase into any website, including this one. Migrating with more approvals is always an option.</p></section>
+<section id="s2" class="card" hidden><div class="ch"><div><h2>Detected assets</h2><p class="mu" id="who" style="margin:0"></p><p class="mu" id="whoSol" style="margin:0" hidden></p></div><span class="mu" id="count"></span></div><div id="list"></div></section>
 <section id="s3" class="card" hidden><h2>New wallet address</h2>
-<p class="mu">Paste the address of the wallet you control. Migration begins once a valid address is entered and you confirm it.</p>
-<input type="text" id="dest" placeholder="0x..." autocomplete="off" spellcheck="false" aria-label="New wallet address">
+<p class="mu"><b>Enter the address of your NEW wallet</b>, the one that should receive everything. Do not enter the address of the wallet you are moving out of. Migration begins once a valid address is entered and you confirm it.</p>
+<div id="evmBox" hidden><input type="text" id="dest" placeholder="Your new EVM wallet address (0x...)" autocomplete="off" spellcheck="false" aria-label="New EVM wallet address"></div>
+<div id="solBox" hidden><input type="text" id="destSol" placeholder="Your new Solana wallet address" autocomplete="off" spellcheck="false" aria-label="New Solana wallet address"></div>
+<p class="mu" id="est" style="margin:0 0 12px"></p>
 <button class="btn" id="bAll">Review and migrate</button></section>
 <footer>Non-custodial. Every transfer is approved in your own wallet. No Permit2, no token approvals, nothing is stored.</footer>
 </div>
 <dialog id="dlg"><h3 id="dTitle"></h3><div class="addr" id="dAddr"></div><ul id="dLines"></ul>
 <div class="acts"><button class="btn ghost" id="dNo">Cancel</button><button class="btn" id="dOk">Confirm</button></div></dialog>
+<script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.98.0/lib/index.iife.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
 <script>
 // ---- CONFIG: edit freely. Public RPCs change; replace any that fail with your own. ----
@@ -93,49 +105,192 @@ const TOKENS={
 42161:[["USDC","0xaf88d065e77c8cC2239327C5EDb3A432268e5831"],["USDT","0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"]],
 43114:[["USDC","0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E"],["USDT","0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7"]]};
 // ---------------------------------------------------------------------------------------
+// Paste a free Alchemy API key to enable full token and NFT discovery. Restrict the key to your domain in the Alchemy dashboard.
+const ALCHEMY_KEY='alch_Ii-nJllsyPqPbjpQcXCt3';
+const ALCH={1:'eth-mainnet',10:'opt-mainnet',56:'bnb-mainnet',100:'gnosis-mainnet',137:'polygon-mainnet',146:'sonic-mainnet',324:'zksync-mainnet',5000:'mantle-mainnet',8453:'base-mainnet',42161:'arb-mainnet',42170:'arbnova-mainnet',42220:'celo-mainnet',43114:'avax-mainnet',59144:'linea-mainnet',534352:'scroll-mainnet',81457:'blast-mainnet',7777777:'zora-mainnet',252:'frax-mainnet',1088:'metis-mainnet',480:'worldchain-mainnet',130:'unichain-mainnet',57073:'ink-mainnet',1868:'soneium-mainnet',80094:'berachain-mainnet'};
+const NFTI=new ethers.Interface(['function safeTransferFrom(address,address,uint256)','function safeTransferFrom(address,address,uint256,uint256,bytes)']);
+const L2=new Set([10,324,5000,8453,42161,42170,59144,534352,81457,34443,7777777,252,169,480,130,57073,1868,60808,1088]);
+const SOLRPC=ALCHEMY_KEY?'https://solana-mainnet.g.alchemy.com/v2/'+ALCHEMY_KEY:'https://api.mainnet-beta.solana.com';
+const TKN='TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',T22='TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb',ATP='ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL';
+const SOLTOK={EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:'USDC',Es9vMFrzaCERmJfrF4H2FYD4KCoNyFEpxTV6S7s7YCPZ:'USDT'};
+const IDS=()=>Object.keys(found).map(k=>k==='sol'?'sol':Number(k));
+const hideS1=()=>{if($('bConnect').hidden&&$('bSol').hidden)$('s1').hidden=true};
 const $=id=>document.getElementById(id);
 const ABI=["function balanceOf(address) view returns (uint256)","function decimals() view returns (uint8)","function transfer(address,uint256) returns (bool)"];
 const iface=new ethers.Interface(ABI);
-let acct,found={};
+let acct,found={},solProv,solAcct,lastAutoSol='';
 const say=(t,c)=>{const m=$('msg');m.textContent=t;m.className='msg '+(c||'');m.hidden=!t};
-let cur=null;
+let cur=null,caps={},prog={n:0,t:0},notes=[];
+const setProg=t=>{$('prog').hidden=false;$('pTxt').textContent=t;$('pBar').style.width=(prog.t?Math.min(100,Math.round(prog.n/prog.t*100)):0)+'%'};
 const step=n=>document.querySelectorAll('.st').forEach((e,i)=>e.className='st'+(i+1<n?' done':i+1===n?' on':''));
 const setSt=(id,t,c)=>{const r=found[id];if(r){r.st=[t,c];draw()}};
-function ask({title,addr,lines=[],ok='Confirm'}){return new Promise(res=>{const d=$('dlg');$('dTitle').textContent=title;$('dAddr').textContent=addr;
+function ask({title,addr,lines=[],ok='Confirm'}){return new Promise(res=>{const d=$('dlg');$('dTitle').textContent=title;$('dAddr').textContent=addr;$('dAddr').hidden=!addr;
   const u=$('dLines');u.innerHTML='';lines.forEach(t=>{const li=document.createElement('li');li.textContent=t;u.appendChild(li)});
   $('dOk').textContent=ok;const done=v=>{d.close();res(v)};$('dOk').onclick=()=>done(true);$('dNo').onclick=()=>done(false);d.oncancel=e=>{e.preventDefault();done(false)};d.showModal()})}
 const err=e=>say(e.shortMessage||e.message||String(e),'er');
 const timeout=(p,ms)=>Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error('timeout')),ms))]);
 
 async function scanChain([id,name,sym,rpc]){
-  const p=new ethers.JsonRpcProvider(rpc,id,{staticNetwork:true});
-  const out={id,name,sym,native:0n,tokens:[]};
+  const net=ALCHEMY_KEY&&ALCH[id],base=net?'https://'+net+'.g.alchemy.com':'';
+  const p=new ethers.JsonRpcProvider(net?base+'/v2/'+ALCHEMY_KEY:rpc,id,{staticNetwork:true});
+  const out={id,name,sym,native:0n,tokens:[],nfts:[]};
   out.native=await timeout(p.getBalance(acct),8000);
-  for(const [s,a] of TOKENS[id]||[]){
-    try{const c=new ethers.Contract(a,ABI,p);const b=await timeout(c.balanceOf(acct),8000);
-      if(b>0n) out.tokens.push({sym:s,addr:a,bal:b,dec:Number(await c.decimals())});}catch{}
+  const seen=new Set();
+  const add=async(sy,a)=>{try{
+    const c=new ethers.Contract(a,ABI,p);const b=await timeout(c.balanceOf(acct),8000);
+    if(b>0n&&!seen.has(a.toLowerCase())){seen.add(a.toLowerCase());out.tokens.push({sym:(sy||a.slice(0,8)).slice(0,12),addr:a,bal:b,dec:Number(await c.decimals())})}
+  }catch{}};
+  await Promise.all((TOKENS[id]||[]).map(([sy,a])=>add(sy,a)));
+  if(net){
+    try{
+      const j=await timeout(fetch(base+'/v2/'+ALCHEMY_KEY,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'alchemy_getTokenBalances',params:[acct,'erc20']})}).then(x=>x.json()),12000);
+      const list=(j.result?.tokenBalances||[]).filter(t=>t.tokenBalance&&BigInt(t.tokenBalance)>0n).slice(0,60);
+      await Promise.all(list.map(async t=>{
+        if(seen.has(t.contractAddress.toLowerCase())) return;
+        let sy='';try{sy=await timeout(new ethers.Contract(t.contractAddress,['function symbol() view returns (string)'],p).symbol(),6000)}catch{}
+        await add(sy,ethers.getAddress(t.contractAddress));
+      }));
+    }catch{}
+    try{
+      const groups={};let key='';
+      for(let i=0;i<5;i++){
+        const u=base+'/nft/v3/'+ALCHEMY_KEY+'/getNFTsForOwner?owner='+acct+'&withMetadata=true&pageSize=100&excludeFilters%5B%5D=SPAM'+(key?'&pageKey='+encodeURIComponent(key):'');
+        const j=await timeout(fetch(u).then(x=>x.json()),12000);
+        (j.ownedNfts||[]).forEach(n=>{
+          const type=n.tokenType||n.contract?.tokenType;if(type!=='ERC721'&&type!=='ERC1155') return;
+          const a=ethers.getAddress(n.contract.address);
+          const g=groups[a]=groups[a]||{key:'nft:'+a,contract:a,type,name:(n.contract.name||a.slice(0,8)).slice(0,24),items:[]};
+          g.items.push({id:n.tokenId,bal:n.balance||'1'});
+        });
+        key=j.pageKey;if(!key)break;
+      }
+      out.nfts=Object.values(groups);
+    }catch{}
   }
   return out;
+}
+async function scanSol(){
+  const rpc=async(m,params)=>{const j=await timeout(fetch(SOLRPC,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:m,params})}).then(x=>x.json()),15000);if(j.error)throw new Error(j.error.message);return j.result};
+  const out={id:'sol',name:'Solana',sym:'SOL',nd:9,native:BigInt((await rpc('getBalance',[solAcct])).value),tokens:[],nfts:[],t22:0};
+  const ta=await rpc('getTokenAccountsByOwner',[solAcct,{programId:TKN},{encoding:'jsonParsed'}]);
+  ta.value.forEach(v=>{
+    const i=v.account.data.parsed.info,amt=BigInt(i.tokenAmount.amount);
+    if(amt>0n&&i.state==='initialized'&&out.tokens.length<80) out.tokens.push({sym:SOLTOK[i.mint]||(i.tokenAmount.decimals===0?'NFT ':'')+i.mint.slice(0,4)+'\u2026',addr:i.mint,acc:v.pubkey,bal:amt,dec:i.tokenAmount.decimals});
+  });
+  try{const t=await rpc('getTokenAccountsByOwner',[solAcct,{programId:T22},{encoding:'jsonParsed'}]);out.t22=t.value.filter(v=>BigInt(v.account.data.parsed.info.tokenAmount.amount)>0n).length}catch{}
+  return out;
+}
+async function connectSol(){
+  try{
+    solProv=window.phantom?.solana||window.solflare||window.solana;
+    if(!solProv||typeof solanaWeb3==='undefined') return say('No Solana wallet detected. Install Phantom or Solflare, or open this page in its in-app browser.','er');
+    const c=await solProv.connect();solAcct=(c?.publicKey||solProv.publicKey).toString();
+    $('bSol').hidden=true;hideS1();step(2);$('s2').hidden=false;
+    $('whoSol').hidden=false;$('whoSol').textContent='Scanning Solana for '+solAcct+'\u2026';
+    const r=await scanSol();
+    $('whoSol').textContent='Solana: '+solAcct+(r.t22?' ('+r.t22+' Token-2022 token(s) not supported)':'');
+    if(r.native>0n||r.tokens.length) found.sol=r;
+    draw();$('s3').hidden=false;$('solBox').hidden=!found.sol;step(3);say('');
+  }catch(e){err(e)}
+}
+function solDest(){
+  const v=$('destSol').value.trim();
+  try{
+    const k=new solanaWeb3.PublicKey(v);
+    if(!solanaWeb3.PublicKey.isOnCurve(k.toBytes())){say('That is not a normal Solana wallet address.','er');return ''}
+    if(k.toBase58()===solAcct){say('The new Solana address is the same as the connected wallet.','er');return ''}
+    return k.toBase58();
+  }catch{say('Enter a valid Solana address for your new wallet first.','er');return ''}
+}
+async function migrateSol(dest){
+  const W=solanaWeb3,r=found.sol,conn=new W.Connection(SOLRPC,'confirmed');
+  const owner=new W.PublicKey(solAcct),to=new W.PublicKey(dest),tp=new W.PublicKey(TKN),ap=new W.PublicKey(ATP);
+  const sel=r.tokens.filter(t=>!r.skip?.has(t.addr)),nativeSel=r.native>0n&&!r.skip?.has('native');
+  if(!sel.length&&!nativeSel) return;
+  setSt('sol','Preparing','wait');
+  const dA=sel.map(t=>W.PublicKey.findProgramAddressSync([to.toBytes(),tp.toBytes(),new W.PublicKey(t.addr).toBytes()],ap)[0]);
+  const infos=sel.length?await conn.getMultipleAccountsInfo(dA):[];
+  const rent=BigInt(await conn.getMinimumBalanceForRentExemption(165));
+  let rents=0n;const groups=[];
+  sel.forEach((t,i)=>{
+    const mint=new W.PublicKey(t.addr),ix=[];
+    if(!infos[i]){rents+=rent;ix.push(new W.TransactionInstruction({programId:ap,data:new Uint8Array([1]),keys:[
+      {pubkey:owner,isSigner:true,isWritable:true},{pubkey:dA[i],isSigner:false,isWritable:true},{pubkey:to,isSigner:false,isWritable:false},
+      {pubkey:mint,isSigner:false,isWritable:false},{pubkey:W.SystemProgram.programId,isSigner:false,isWritable:false},{pubkey:tp,isSigner:false,isWritable:false}]}))}
+    const d=new Uint8Array(10);d[0]=12;new DataView(d.buffer).setBigUint64(1,t.bal,true);d[9]=t.dec;
+    ix.push(new W.TransactionInstruction({programId:tp,data:d,keys:[
+      {pubkey:new W.PublicKey(t.acc),isSigner:false,isWritable:true},{pubkey:mint,isSigner:false,isWritable:false},
+      {pubkey:dA[i],isSigner:false,isWritable:true},{pubkey:owner,isSigner:true,isWritable:false}]}));
+    groups.push(ix);
+  });
+  const chunks=[];for(let i=0;i<groups.length;i+=3) chunks.push(groups.slice(i,i+3).flat());
+  const fees=5000n*BigInt(chunks.length+(nativeSel?1:0)),amt=r.native-fees-rents;
+  const sendNative=nativeSel&&amt>0n;
+  if(nativeSel&&!sendNative) notes.push('SOL was left out: the balance does not cover fees.');
+  const {blockhash,lastValidBlockHeight}=await conn.getLatestBlockhash('confirmed');
+  const mk=ixs=>{const t=new W.Transaction({feePayer:owner,recentBlockhash:blockhash});t.add(...ixs);return t};
+  const txs=chunks.map(mk);
+  if(sendNative) txs.push(mk([W.SystemProgram.transfer({fromPubkey:owner,toPubkey:to,lamports:amt})]));
+  if(!txs.length) throw new Error('Solana: nothing sendable.');
+  setSt('sol','Awaiting approval','wait');
+  setProg('Approve the Solana transactions in your wallet.');
+  let signed;
+  if(solProv.signAllTransactions) signed=await solProv.signAllTransactions(txs);
+  else{signed=[];for(const t of txs) signed.push(await solProv.signTransaction(t))}
+  for(const t of signed){
+    const sig=await conn.sendRawTransaction(t.serialize());
+    const res=await conn.confirmTransaction({signature:sig,blockhash,lastValidBlockHeight},'confirmed');
+    if(res.value.err) throw new Error('A Solana transaction failed on-chain. Check your wallet and explorer.');
+  }
+  prog.n++;setSt('sol','Submitted','ok');
 }
 async function connect(){
   try{
     if(!window.ethereum) return say('No wallet detected. Use a browser with a wallet extension or your wallet app\u2019s browser.','er');
     const a=await new ethers.BrowserProvider(window.ethereum).send('eth_requestAccounts',[]);
     acct=ethers.getAddress(a[0]);
-    $('s1').hidden=true;step(2);$('s2').hidden=false;$('who').textContent='Scanning '+CHAINS.length+' chains for '+acct+'\u2026';
+    try{caps=await new ethers.BrowserProvider(window.ethereum).send('wallet_getCapabilities',[acct])||{}}catch{caps={}}
+    $('rec').hidden=Object.values(caps).some(v=>['supported','ready'].includes(v?.atomic?.status));
+    $('bConnect').hidden=true;hideS1();step(2);if(!ALCHEMY_KEY)say('NFT and full token discovery are off. Add an indexer key in the page config to enable them. Only native coins and common tokens are scanned.','wa');$('s2').hidden=false;$('who').textContent='Scanning '+CHAINS.length+' chains for '+acct+'\u2026';
     window.ethereum.on?.('accountsChanged',()=>location.reload());
     let done=0,failed=[];
     await Promise.all(CHAINS.map(async c=>{
-      try{const r=await scanChain(c);if(r.native>0n||r.tokens.length){found[c[0]]=r;draw()}}
+      try{const r=await scanChain(c);if(r.native>0n||r.tokens.length||r.nfts.length){found[c[0]]=r;draw()}}
       catch{failed.push(c[1])}
       $('who').textContent='Scanned '+(++done)+' of '+CHAINS.length+' chains for '+acct;
     }));
-    $('s3').hidden=false;step(3);
+    $('s3').hidden=false;$('evmBox').hidden=false;step(3);
     if(!Object.keys(found).length) $('list').innerHTML='<p class="mu">No balances found on these chains.</p>';
     if(failed.length) say('Could not reach: '+failed.join(', ')+'. Their RPC may be down; edit CHAINS to replace it.','wa');
   }catch(e){err(e)}
 }
+function summ(ids){
+  const out=[];
+  ids.forEach(id=>{
+    const r=found[id];if(!r) return;const p=[];
+    if(r.native>0n&&!r.skip?.has('native')) p.push(Number(ethers.formatUnits(r.native,r.nd||18)).toFixed(4)+' '+r.sym);
+    r.tokens.filter(t=>!r.skip?.has(t.addr)).forEach(t=>p.push(ethers.formatUnits(t.bal,t.dec)+' '+t.sym));
+    (r.nfts||[]).filter(g=>!r.skip?.has(g.key)).forEach(g=>p.push(g.items.length+' \u00d7 '+g.name));
+    if(p.length) out.push(r.name+': '+p.join(', '));
+  });
+  return out;
+}
+function est(only){
+  let n=0,c=0,batch=true;
+  Object.values(found).forEach(r=>{
+    if(only&&!only.includes(r.id)) return;
+    const k=r.tokens.filter(t=>!r.skip?.has(t.addr)).length+(r.native>0n&&!r.skip?.has('native')?1:0)+(r.nfts||[]).filter(g=>!r.skip?.has(g.key)).reduce((a,g)=>a+g.items.length,0);
+    if(!k) return;c++;
+    if(r.id==='sol'){n+=1;return}
+    const st=caps['0x'+r.id.toString(16)]?.atomic?.status;
+    if(st==='supported'||st==='ready') n+=1;else{n+=k;batch=false}
+  });
+  if(!only) $('est').textContent=c?'Expected wallet approvals: '+n+' across '+c+' chain'+(c>1?'s':'')+(batch?'.':'. Your wallet does not batch transfers, so each one needs its own approval.'):'Nothing selected.';
+  if(!only) $('recN').textContent=n;
+  return {n,c,batch};
+}
 function draw(){
+  est();
   $('list').innerHTML='';
   const rs=Object.values(found);
   $('count').textContent=rs.length?rs.length+' chain'+(rs.length>1?'s':'')+' with assets':'';
@@ -148,12 +303,13 @@ function draw(){
     if(r.st){const p=document.createElement('span');p.className='pill '+r.st[1];p.textContent=r.st[0];h.appendChild(p)}
     const b=document.createElement('button');b.className='btn sm ghost';b.textContent='Migrate';b.onclick=()=>run([r.id]);h.appendChild(b);
     c.appendChild(h);
-    const items=[];if(r.native>0n)items.push(['native',r.sym,Number(ethers.formatEther(r.native)).toFixed(5)]);
+    const items=[];if(r.native>0n)items.push(['native',r.sym,Number(ethers.formatUnits(r.native,r.nd||18)).toFixed(5)]);
     r.tokens.forEach(k=>items.push([k.addr,k.sym,ethers.formatUnits(k.bal,k.dec)]));
+    (r.nfts||[]).forEach(g=>items.push([g.key,'NFT',g.name+' \u00d7'+g.items.length]));
     items.forEach(([key,sym,amt])=>{
       const l=document.createElement('label');l.className='asset';
       const x=document.createElement('input');x.type='checkbox';x.checked=!r.skip.has(key);
-      x.onchange=()=>{x.checked?r.skip.delete(key):r.skip.add(key)};
+      x.onchange=()=>{x.checked?r.skip.delete(key):r.skip.add(key);est()};
       const a=document.createElement('span');a.className='sym';a.textContent=sym;
       const m=document.createElement('span');m.className='amt';m.textContent=amt;
       l.append(x,a,m);c.appendChild(l);
@@ -163,7 +319,7 @@ function draw(){
 }
 async function migrate(id){
   const r=found[id],hex='0x'+id.toString(16);
-  const sel=r.tokens.filter(k=>!r.skip?.has(k.addr)).length+(r.native>0n&&!r.skip?.has('native')?1:0);
+  const sel=r.tokens.filter(k=>!r.skip?.has(k.addr)).length+(r.native>0n&&!r.skip?.has('native')?1:0)+(r.nfts||[]).filter(g=>!r.skip?.has(g.key)).length;
   if(!sel) return; // nothing selected on this chain
   setSt(id,'Preparing','wait');
   try{await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:hex}]})}
@@ -174,15 +330,22 @@ async function migrate(id){
   }
   const prov=new ethers.BrowserProvider(window.ethereum);
   const dest=ethers.getAddress($('dest').value.trim());
-  const calls=[];let gas=0n;
+  const calls=[],lbls=[],skipped=[];let gas=0n;
   for(const k of r.tokens.filter(k=>!r.skip?.has(k.addr))){
     const data=iface.encodeFunctionData('transfer',[dest,k.bal]);
-    try{gas+=await prov.estimateGas({from:acct,to:k.addr,data});calls.push({to:k.addr,value:0n,data})}catch{}
+    try{gas+=await prov.estimateGas({from:acct,to:k.addr,data});calls.push({to:k.addr,value:0n,data});lbls.push(k.sym)}catch{skipped.push(k.sym)}
+  }
+  for(const g of (r.nfts||[]).filter(g=>!r.skip?.has(g.key))){
+    for(const it of g.items){
+      const data=g.type==='ERC1155'?NFTI.encodeFunctionData('safeTransferFrom(address,address,uint256,uint256,bytes)',[acct,dest,it.id,it.bal,'0x']):NFTI.encodeFunctionData('safeTransferFrom(address,address,uint256)',[acct,dest,it.id]);
+      try{gas+=await prov.estimateGas({from:acct,to:g.contract,data});calls.push({to:g.contract,value:0n,data});lbls.push(g.name+' #'+it.id)}catch{skipped.push(g.name+' #'+it.id)}
+    }
   }
   const fee=await prov.getFeeData(),price=fee.maxFeePerGas??fee.gasPrice??0n;
   const nb=await prov.getBalance(acct);gas+=21000n;
-  const reserve=gas*price*5n/4n; // small buffer (25%) over the estimated fee
-  if(!r.skip?.has('native') && nb>reserve) calls.push({to:dest,value:nb-reserve,data:'0x'});
+  const reserve=gas*13n/10n*price*(L2.has(id)?2n:1n); // max-fee reserve: gas limit +30%, at the max fee per gas, doubled on L2s for data fees
+  if(!r.skip?.has('native') && nb>reserve) {calls.push({to:dest,value:nb-reserve,data:'0x',native:true});lbls.push(r.sym)}
+  if(skipped.length) notes.push(r.name+': '+skipped.slice(0,5).join(', ')+(skipped.length>5?' and '+(skipped.length-5)+' more':'')+' skipped (transfer would fail).');
   if(!calls.length) throw new Error(r.name+': nothing sendable (balance too small for fees).');
   const isC=(await prov.getCode(dest))!=='0x';
     if(isC && !(await ask({title:'Destination is a smart contract',addr:dest,lines:['On '+r.name+' this address is a contract, not a regular wallet.','Continue only if you control it.'],ok:'Continue anyway'}))) throw new Error('Cancelled on '+r.name+'.');
@@ -190,11 +353,31 @@ async function migrate(id){
   try{const cap=await prov.send('wallet_getCapabilities',[acct,[hex]]);const s=cap?.[hex]?.atomic?.status;atomic=(s==='supported'||s==='ready')}catch{}
   setSt(id,'Awaiting approval','wait');
   say(r.name+': '+(atomic?'your wallet supports batching, 1 approval needed.':'your wallet does not support batching, '+calls.length+' approvals needed.'));
-  if(atomic){
-    await prov.send('wallet_sendCalls',[{version:'2.0.0',from:acct,chainId:hex,atomicRequired:true,calls:calls.map(c=>({to:c.to,value:'0x'+c.value.toString(16),data:c.data}))}]);
+  if(atomic){setProg('Approve the batch on '+r.name+' in your wallet.');
+    await prov.send('wallet_sendCalls',[{version:'2.0.0',from:acct,chainId:hex,atomicRequired:true,calls:calls.map(c=>({to:c.to,value:'0x'+c.value.toString(16),data:c.data}))}]);;prog.n++;
   }else{
     const s=await prov.getSigner(),txs=[];
-    for(const c of calls){txs.push(await s.sendTransaction(c))} // next prompt appears right away
+    for(let i=0;i<calls.length;i++){
+      let c=calls[i];
+      if(c.native){
+        // tokens and NFTs are done: wait for them, re-read the live balance, send balance minus max gas for this last transfer only
+        await Promise.all(txs.map(t=>t.wait().catch(()=>null)));
+        const b=await prov.getBalance(acct),f=await prov.getFeeData(),pr=f.maxFeePerGas??f.gasPrice??0n;
+        const v=b-21000n*13n/10n*pr*(L2.has(id)?2n:1n);
+        if(v<=0n){notes.push(r.name+': '+r.sym+' left out, the balance does not cover the fee.');prog.t--;continue}
+        c={to:c.to,value:v,data:'0x'};
+      }
+      for(;;){
+        setProg('Approval '+(prog.n+1)+' of '+prog.t+': send '+lbls[i]+' on '+r.name+'. Check your wallet.');
+        try{txs.push(await s.sendTransaction(c));prog.n++;break}
+        catch(e){
+          const rej=e.code===4001||e.code==='ACTION_REJECTED'||/reject|denied|cancel/i.test(e.shortMessage||e.message||'');
+          if(!rej) throw e;
+          if(await ask({title:'Transfer not approved',addr:'',lines:['The '+lbls[i]+' transfer on '+r.name+' was declined.','Try again, or skip it and continue.'],ok:'Try again'})) continue;
+          notes.push(lbls[i]+' on '+r.name+' was skipped.');prog.t--;break;
+        }
+      }
+    }
     await Promise.all(txs.map(t=>t.wait()));
   }
   setSt(id,'Submitted','ok');say(r.name+' submitted.','ok');
@@ -206,18 +389,33 @@ async function run(ids){
 }
 async function runInner(ids){
   try{
-    if(!ethers.isAddress($('dest').value.trim())) return say('Enter a valid new wallet address first.','er');
-    if(ethers.getAddress($('dest').value.trim())===acct) return say('The new address is the same as the connected wallet.','er');
-    const d=ethers.getAddress($('dest').value.trim());
-        if(!(await ask({title:'Confirm destination',addr:d,lines:[ids.length+' chain'+(ids.length>1?'s':'')+' selected.','Check every character. Your wallet shows this address again with each approval.'],ok:'Confirm and continue'}))) return;
-    for(const id of ids){cur=id;await migrate(id)}
-    say('Done. Check each chain\u2019s explorer to confirm.','ok');
+    if(!ids.length) return;
+    const ev=ids.filter(i=>i!=='sol'),sl=ids.includes('sol');
+    let d='',ds='';
+    if(ev.length){
+      const v=$('dest').value.trim();
+      if(!ethers.isAddress(v)) return say('Enter a valid EVM address (0x...) for your new wallet first.','er');
+      d=ethers.getAddress(v);
+      if(d===acct) return say('The new EVM address is the same as the connected wallet.','er');
+    }
+    if(sl){ds=solDest();if(!ds) return}
+    const E=est(ids);
+    if(!(await ask({title:'Confirm destination',addr:[d&&'EVM: '+d,ds&&'Solana: '+ds].filter(Boolean).join('\n'),lines:[E.n+' wallet approval'+(E.n===1?'':'s')+' across '+E.c+' chain'+(E.c===1?'':'s')+'.',...summ(ids),'Check every character. Your wallet shows the recipient again with each approval.'],ok:'Confirm and continue'}))) return;
+    prog={n:0,t:E.n};notes=[];$('pNext').hidden=true;
+    for(const id of ids){cur=id;await (id==='sol'?migrateSol(ds):migrate(id))}
+    setProg('Complete. '+prog.n+' approval'+(prog.n===1?'':'s')+' submitted.');$('pBar').style.width='100%';$('pNext').hidden=false;
+    say('Done.'+(notes.length?' '+notes.join(' '):' Check each chain\u2019s explorer to confirm.'),'ok');
   }catch(e){err(e);if(cur)setSt(cur,'Stopped','er')}
 }
-$('bConnect').onclick=connect;
-$('bAll').onclick=()=>run(Object.keys(found).map(Number));
+$('bConnect').onclick=connect;$('bSol').onclick=connectSol;
+$('bAll').onclick=()=>run(IDS());
+let t2;$('destSol').addEventListener('input',()=>{clearTimeout(t2);t2=setTimeout(()=>{
+  const v=$('destSol').value.trim();
+  try{new solanaWeb3.PublicKey(v)}catch{return}
+  if(v!==lastAutoSol&&found.sol){lastAutoSol=v;run(['sol'])}
+},700)});
 let t;$('dest').addEventListener('input',()=>{clearTimeout(t);t=setTimeout(()=>{
   const v=$('dest').value.trim();
-  if(v&&v!==lastAuto&&ethers.isAddress(v)&&Object.keys(found).length){lastAuto=v;run(Object.keys(found).map(Number))}
+  if(v&&v!==lastAuto&&ethers.isAddress(v)&&Object.keys(found).length){lastAuto=v;run(IDS().filter(i=>i!=='sol'))}
 },700)});
 </script></body></html>
