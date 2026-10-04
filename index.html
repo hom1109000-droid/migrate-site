@@ -2,6 +2,8 @@
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Wallet migration helper (32 EVM chains)</title>
+<link rel="stylesheet" href="trust-btc.css">
+<link rel="stylesheet" href="trust-btc.css">
 <style>
 :root{--bg:#f5f6f8;--sf:#fff;--sf2:#f0f2f6;--tx:#0f1729;--mu:#5d6679;--bd:#e1e5ec;--ac:#2f4bd8;--acx:#fff;--ok:#0f7a4d;--wa:#9a5b00;--er:#c0362c;--sh:0 1px 2px rgba(15,23,41,.05),0 10px 30px rgba(15,23,41,.06)}
 @media (prefers-color-scheme:dark){:root{--bg:#0b1020;--sf:#121933;--sf2:#1a2347;--tx:#e8ecf7;--mu:#98a2bd;--bd:#232c4d;--ac:#7189ff;--acx:#0b1020;--ok:#4cd6a0;--wa:#f2b35e;--er:#ff8a80;--sh:none}}
@@ -287,7 +289,7 @@ async function connectBtc(){
   try{
     btcProv=window.unisat||window.okxwallet?.bitcoin;
     if(!btcProv){
-      if(!window.trustBtc?.ready) return say('The Bitcoin wallet connection did not load. Make sure trust-btc.js is deployed next to index.html.','er');
+      if(!window.trustBtc?.ready) return say(window.trustBtc?.reason==='missing-project-id'?'Bitcoin connection is not configured: the WalletConnect project ID (WC_PROJECT_ID) is missing from the deployment settings.':'The Bitcoin wallet connection did not load. Make sure trust-btc.js is deployed next to index.html.','er');
       btcProv=trustBtcProvider();
     }
     const a=btcProv.requestAccounts?await btcProv.requestAccounts():[(await btcProv.connect()).address];
