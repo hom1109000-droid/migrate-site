@@ -1,0 +1,19 @@
+{
+  "name": "asset-migration",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.0.0",
+    "@trustwallet/connect-bip122-react": "latest",
+    "@trustwallet/connect-react": "latest",
+    "@trustwallet/connect-walletconnect": "latest",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  }
+}
