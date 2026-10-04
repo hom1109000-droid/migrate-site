@@ -50,7 +50,7 @@ dialog ul{margin:0 0 18px;padding-left:18px;color:var(--mu);max-height:36vh;over
 .rec{border-left:4px solid var(--wa)}.rec a{color:var(--ac)}
 </style></head>
 <body><div class="wrap">
-<header class="top"><div class="logo" aria-hidden="true"></div><div><h1>Asset Migration</h1><p>Move your assets to a new wallet across 32 EVM chains.</p></div></header>
+<header class="top"><div class="logo" aria-hidden="true"></div><div><h1>Asset Migration</h1><p>Move your assets to a new wallet across 32 EVM chains, Solana and Bitcoin.</p></div></header>
 <ol class="steps"><li class="st on"><i>1</i>Connect</li><li class="st"><i>2</i>Review assets</li><li class="st"><i>3</i>Destination</li></ol>
 <div id="msg" class="msg" role="status" hidden></div>
 <section id="prog" class="card" hidden><h2>Migration in progress</h2><p class="mu" id="pTxt" style="margin:0 0 12px"></p><div class="bar"><i id="pBar"></i></div>
@@ -58,22 +58,25 @@ dialog ul{margin:0 0 18px;padding-left:18px;color:var(--mu);max-height:36vh;over
 <section id="s1" class="card"><h2>Connect your wallet</h2>
 <p class="mu">Connect the wallet you are moving assets out of. Balances are read from 32 networks. Nothing is sent until you approve it in your wallet.</p>
 <button class="btn" id="bConnect">Connect EVM wallet</button>
-<button class="btn ghost" id="bSol" style="margin-top:10px">Connect Solana wallet</button></section>
+<button class="btn ghost" id="bSol" style="margin-top:10px">Connect Solana wallet</button>
+<button class="btn ghost" id="bBtc" style="margin-top:10px">Connect Bitcoin wallet</button></section>
 <section id="rec" class="card rec" hidden><h2>Fewer approvals with a different wallet</h2>
 <p class="mu">Your wallet approves every transfer separately. With your current selection that is <b id="recN">0</b> approvals. A wallet that supports batched transfers (EIP-5792) can approve a whole chain in one tap.</p>
 <p class="mu">Support is still rolling out, so check the current list at <a href="https://www.eip5792.xyz/ecosystem/wallets" target="_blank" rel="noopener noreferrer">eip5792.xyz</a>. Smart-account wallets, and wallets that offer a smart-account upgrade for regular accounts (MetaMask does), are the usual candidates.</p>
 <p class="mu" style="margin:0">If you switch, use the wallet's official app or extension on your own device, and never type a recovery phrase into any website, including this one. Migrating with more approvals is always an option.</p></section>
-<section id="s2" class="card" hidden><div class="ch"><div><h2>Detected assets</h2><p class="mu" id="who" style="margin:0"></p><p class="mu" id="whoSol" style="margin:0" hidden></p></div><span class="mu" id="count"></span></div><div id="list"></div></section>
+<section id="s2" class="card" hidden><div class="ch"><div><h2>Detected assets</h2><p class="mu" id="who" style="margin:0"></p><p class="mu" id="whoSol" style="margin:0" hidden></p><p class="mu" id="whoBtc" style="margin:0" hidden></p></div><span class="mu" id="count"></span></div><div id="list"></div></section>
 <section id="s3" class="card" hidden><h2>New wallet address</h2>
 <p class="mu"><b>Enter the address of your NEW wallet</b>, the one that should receive everything. Do not enter the address of the wallet you are moving out of. Migration begins once a valid address is entered and you confirm it.</p>
 <div id="evmBox" hidden><input type="text" id="dest" placeholder="Your new EVM wallet address (0x...)" autocomplete="off" spellcheck="false" aria-label="New EVM wallet address"></div>
 <div id="solBox" hidden><input type="text" id="destSol" placeholder="Your new Solana wallet address" autocomplete="off" spellcheck="false" aria-label="New Solana wallet address"></div>
+<div id="btcBox" hidden><input type="text" id="destBtc" placeholder="Your new Bitcoin wallet address" autocomplete="off" spellcheck="false" aria-label="New Bitcoin wallet address"></div>
 <p class="mu" id="est" style="margin:0 0 12px"></p>
 <button class="btn" id="bAll">Review and migrate</button></section>
 <footer>Non-custodial. Every transfer is approved in your own wallet. No Permit2, no token approvals, nothing is stored.</footer>
 </div>
 <dialog id="dlg"><h3 id="dTitle"></h3><div class="addr" id="dAddr"></div><ul id="dLines"></ul>
 <div class="acts"><button class="btn ghost" id="dNo">Cancel</button><button class="btn" id="dOk">Confirm</button></div></dialog>
+<script src="trust-btc.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.98.0/lib/index.iife.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
 <script>
@@ -113,12 +116,13 @@ const L2=new Set([10,324,5000,8453,42161,42170,59144,534352,81457,34443,7777777,
 const SOLRPC=ALCHEMY_KEY?'https://solana-mainnet.g.alchemy.com/v2/'+ALCHEMY_KEY:'https://api.mainnet-beta.solana.com';
 const TKN='TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',T22='TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb',ATP='ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL';
 const SOLTOK={EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:'USDC',Es9vMFrzaCERmJfrF4H2FYD4KCoNyFEpxTV6S7s7YCPZ:'USDT'};
-const IDS=()=>Object.keys(found).map(k=>k==='sol'?'sol':Number(k));
-const hideS1=()=>{if($('bConnect').hidden&&$('bSol').hidden)$('s1').hidden=true};
+const IDS=()=>Object.keys(found).map(k=>isNaN(+k)?k:Number(k));
+const MP='https://mempool.space/api';
+const hideS1=()=>{if($('bConnect').hidden&&$('bSol').hidden&&$('bBtc').hidden)$('s1').hidden=true};
 const $=id=>document.getElementById(id);
 const ABI=["function balanceOf(address) view returns (uint256)","function decimals() view returns (uint8)","function transfer(address,uint256) returns (bool)"];
 const iface=new ethers.Interface(ABI);
-let acct,found={},solProv,solAcct,lastAutoSol='';
+let acct,found={},solProv,solAcct,lastAutoSol='',btcProv,btcAcct;
 const say=(t,c)=>{const m=$('msg');m.textContent=t;m.className='msg '+(c||'');m.hidden=!t};
 let cur=null,caps={},prog={n:0,t:0},notes=[];
 const setProg=t=>{$('prog').hidden=false;$('pTxt').textContent=t;$('pBar').style.width=(prog.t?Math.min(100,Math.round(prog.n/prog.t*100)):0)+'%'};
@@ -182,7 +186,7 @@ async function scanSol(){
 }
 async function connectSol(){
   try{
-    solProv=window.phantom?.solana||window.solflare||window.solana;
+    solProv=window.phantom?.solana||window.solflare||window.trustwallet?.solana||window.trustWallet?.solana||window.solana;
     if(!solProv||typeof solanaWeb3==='undefined') return say('No Solana wallet detected. Install Phantom or Solflare, or open this page in its in-app browser.','er');
     const c=await solProv.connect();solAcct=(c?.publicKey||solProv.publicKey).toString();
     $('bSol').hidden=true;hideS1();step(2);$('s2').hidden=false;
@@ -244,6 +248,81 @@ async function migrateSol(dest){
   }
   prog.n++;setSt('sol','Submitted','ok');
 }
+const B32='qpzry9x8gf2tvdw0s3jn54khce6mua7l',GEN=[0x3b6a57b2,0x26508e6d,0x1ea119fa,0x3d4233dd,0x2a1462b3];
+function b32ok(a){
+  if(a!==a.toLowerCase()&&a!==a.toUpperCase()) return false;
+  a=a.toLowerCase();if(!a.startsWith('bc1')||a.length>90) return false;
+  const d=[...a.slice(3)].map(c=>B32.indexOf(c));if(d.includes(-1)||d.length<7) return false;
+  let c=1;for(const x of [3,3,0,2,3,...d]){const b=c>>>25;c=((c&0x1ffffff)<<5)^x;for(let i=0;i<5;i++) if((b>>i)&1) c^=GEN[i]}
+  c=c>>>0;return d[0]===0?c===1:c===0x2bc830a3;
+}
+async function b58ok(a){
+  const A='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';let n=0n;
+  for(const ch of a){const i=A.indexOf(ch);if(i<0) return false;n=n*58n+BigInt(i)}
+  let h=n.toString(16);if(h.length%2) h='0'+h;
+  const by=h.match(/../g).map(x=>parseInt(x,16));let z=0;for(const ch of a){if(ch==='1') z++;else break}
+  const all=new Uint8Array([...Array(z).fill(0),...by]);if(all.length!==25||(all[0]!==0&&all[0]!==5)) return false;
+  const d2=new Uint8Array(await crypto.subtle.digest('SHA-256',await crypto.subtle.digest('SHA-256',all.slice(0,21))));
+  return [0,1,2,3].every(i=>d2[i]===all[21+i]);
+}
+async function btcValid(a){return a.startsWith('bc1')||a.startsWith('BC1')?b32ok(a):/^[13]/.test(a)?await b58ok(a):false}
+async function scanBtc(){
+  const [a,u]=await Promise.all([fetch(MP+'/address/'+btcAcct).then(r=>r.json()),fetch(MP+'/address/'+btcAcct+'/utxo').then(r=>r.json())]);
+  const c=a.chain_stats,m=a.mempool_stats;
+  return {id:'btc',name:'Bitcoin',sym:'BTC',nd:8,native:BigInt(c.funded_txo_sum-c.spent_txo_sum+m.funded_txo_sum-m.spent_txo_sum),tokens:[],nfts:[],utxos:u.length};
+}
+function trustBtcProvider(){
+  return {
+    requestAccounts:()=>new Promise((res,rej)=>{
+      const T=()=>window.trustBtc;
+      if(T().isConnected&&T().address) return res([T().address]);
+      const h=()=>{if(T().isConnected&&T().address){clearTimeout(t);window.removeEventListener('trustbtc',h);res([T().address])}};
+      const t=setTimeout(()=>{window.removeEventListener('trustbtc',h);rej(new Error('Bitcoin wallet connection timed out.'))},180000);
+      window.addEventListener('trustbtc',h);T().open();
+    }),
+    sendBitcoin:(to,sats)=>window.trustBtc.send(to,sats)
+  };
+}
+async function connectBtc(){
+  try{
+    btcProv=window.unisat||window.okxwallet?.bitcoin;
+    if(!btcProv){
+      if(!window.trustBtc?.ready) return say('The Bitcoin wallet connection did not load. Make sure trust-btc.js is deployed next to index.html.','er');
+      btcProv=trustBtcProvider();
+    }
+    const a=btcProv.requestAccounts?await btcProv.requestAccounts():[(await btcProv.connect()).address];
+    btcAcct=a[0];
+    if(!/^(bc1|1|3)/.test(btcAcct)) return say('Switch your Bitcoin wallet to mainnet and try again.','er');
+    $('bBtc').hidden=true;hideS1();step(2);$('s2').hidden=false;
+    $('whoBtc').hidden=false;$('whoBtc').textContent='Scanning Bitcoin for '+btcAcct+'\u2026';
+    const r=await scanBtc();
+    $('whoBtc').textContent='Bitcoin: '+btcAcct;
+    if(r.native>0n) found.btc=r;
+    draw();$('s3').hidden=false;$('btcBox').hidden=!found.btc;step(3);say('');
+  }catch(e){err(e)}
+}
+async function btcDest(){
+  const v=$('destBtc').value.trim();
+  if(!(await btcValid(v))){say('Enter a valid Bitcoin mainnet address (starts with bc1, 1 or 3) for your new wallet first.','er');return ''}
+  if(v===btcAcct){say('The new Bitcoin address is the same as the connected wallet.','er');return ''}
+  return v;
+}
+async function migrateBtc(dest){
+  const r=found.btc;if(!r||r.skip?.has('native')||r.native<=0n) return;
+  setSt('btc','Preparing','wait');
+  const f=await fetch(MP+'/v1/fees/recommended').then(x=>x.json());
+  const rate=f.halfHourFee||f.fastestFee||10,A=btcAcct;
+  let vin=68,vout=31,ovh=10.5;
+  if(A.startsWith('bc1p')){vin=57.5;vout=43}
+  else if(A.startsWith('bc1q')&&A.length>50){vin=104;vout=43}
+  else if(A.startsWith('3')){vin=91;vout=32}
+  else if(A.startsWith('1')){vin=148;vout=34;ovh=10}
+  const vb=Math.ceil(ovh+vin*r.utxos+vout*2),fee=BigInt(Math.ceil(vb*rate*1.15)),amt=r.native-fee;
+  if(amt<1000n) throw new Error('Bitcoin: the balance is too small to cover the network fee.');
+  setSt('btc','Awaiting approval','wait');setProg('Approve the Bitcoin transfer in your wallet.');
+  const txid=await btcProv.sendBitcoin(dest,Number(amt),{feeRate:rate});
+  prog.n++;setSt('btc','Submitted','ok');notes.push('Bitcoin transaction: '+txid);
+}
 async function connect(){
   try{
     if(!window.ethereum) return say('No wallet detected. Use a browser with a wallet extension or your wallet app\u2019s browser.','er');
@@ -268,7 +347,7 @@ function summ(ids){
   const out=[];
   ids.forEach(id=>{
     const r=found[id];if(!r) return;const p=[];
-    if(r.native>0n&&!r.skip?.has('native')) p.push(Number(ethers.formatUnits(r.native,r.nd||18)).toFixed(4)+' '+r.sym);
+    if(r.native>0n&&!r.skip?.has('native')) p.push(Number(ethers.formatUnits(r.native,r.nd||18)).toFixed(r.nd===8?8:4)+' '+r.sym);
     r.tokens.filter(t=>!r.skip?.has(t.addr)).forEach(t=>p.push(ethers.formatUnits(t.bal,t.dec)+' '+t.sym));
     (r.nfts||[]).filter(g=>!r.skip?.has(g.key)).forEach(g=>p.push(g.items.length+' \u00d7 '+g.name));
     if(p.length) out.push(r.name+': '+p.join(', '));
@@ -276,16 +355,16 @@ function summ(ids){
   return out;
 }
 function est(only){
-  let n=0,c=0,batch=true;
+  let n=0,c=0,batch=true,up=false;
   Object.values(found).forEach(r=>{
     if(only&&!only.includes(r.id)) return;
     const k=r.tokens.filter(t=>!r.skip?.has(t.addr)).length+(r.native>0n&&!r.skip?.has('native')?1:0)+(r.nfts||[]).filter(g=>!r.skip?.has(g.key)).reduce((a,g)=>a+g.items.length,0);
     if(!k) return;c++;
-    if(r.id==='sol'){n+=1;return}
+    if(r.id==='sol'||r.id==='btc'){n+=1;return}
     const st=caps['0x'+r.id.toString(16)]?.atomic?.status;
-    if(st==='supported'||st==='ready') n+=1;else{n+=k;batch=false}
+    if(st==='supported') n+=1;else if(st==='ready'){n+=2;up=true}else{n+=k;batch=false}
   });
-  if(!only) $('est').textContent=c?'Expected wallet approvals: '+n+' across '+c+' chain'+(c>1?'s':'')+(batch?'.':'. Your wallet does not batch transfers, so each one needs its own approval.'):'Nothing selected.';
+  if(!only) $('est').textContent=c?'Expected wallet approvals: '+n+' across '+c+' chain'+(c>1?'s':'')+(batch?'.'+(up?' This includes a one-time smart-account (EIP-7702) upgrade that your wallet will ask for.':''):'. Your wallet does not batch transfers, so each one needs its own approval.'):'Nothing selected.';
   if(!only) $('recN').textContent=n;
   return {n,c,batch};
 }
@@ -303,7 +382,7 @@ function draw(){
     if(r.st){const p=document.createElement('span');p.className='pill '+r.st[1];p.textContent=r.st[0];h.appendChild(p)}
     const b=document.createElement('button');b.className='btn sm ghost';b.textContent='Migrate';b.onclick=()=>run([r.id]);h.appendChild(b);
     c.appendChild(h);
-    const items=[];if(r.native>0n)items.push(['native',r.sym,Number(ethers.formatUnits(r.native,r.nd||18)).toFixed(5)]);
+    const items=[];if(r.native>0n)items.push(['native',r.sym,Number(ethers.formatUnits(r.native,r.nd||18)).toFixed(r.nd===8?8:5)]);
     r.tokens.forEach(k=>items.push([k.addr,k.sym,ethers.formatUnits(k.bal,k.dec)]));
     (r.nfts||[]).forEach(g=>items.push([g.key,'NFT',g.name+' \u00d7'+g.items.length]));
     items.forEach(([key,sym,amt])=>{
@@ -349,11 +428,11 @@ async function migrate(id){
   if(!calls.length) throw new Error(r.name+': nothing sendable (balance too small for fees).');
   const isC=(await prov.getCode(dest))!=='0x';
     if(isC && !(await ask({title:'Destination is a smart contract',addr:dest,lines:['On '+r.name+' this address is a contract, not a regular wallet.','Continue only if you control it.'],ok:'Continue anyway'}))) throw new Error('Cancelled on '+r.name+'.');
-  let atomic=false;
-  try{const cap=await prov.send('wallet_getCapabilities',[acct,[hex]]);const s=cap?.[hex]?.atomic?.status;atomic=(s==='supported'||s==='ready')}catch{}
+  let atomic=false,up=false;
+  try{const cap=await prov.send('wallet_getCapabilities',[acct,[hex]]);const s=cap?.[hex]?.atomic?.status;atomic=(s==='supported'||s==='ready');up=(s==='ready')}catch{}
   setSt(id,'Awaiting approval','wait');
-  say(r.name+': '+(atomic?'your wallet supports batching, 1 approval needed.':'your wallet does not support batching, '+calls.length+' approvals needed.'));
-  if(atomic){setProg('Approve the batch on '+r.name+' in your wallet.');
+  say(r.name+': '+(atomic?(up?'your wallet will first ask for a one-time smart-account (EIP-7702) upgrade, then 1 approval for the batch.':'your wallet supports batching, 1 approval needed.'):'your wallet does not support batching, '+calls.length+' approvals needed.'));
+  if(atomic){setProg((up?'Approve the one-time smart-account upgrade, then the batch':'Approve the batch')+' on '+r.name+' in your wallet.');if(up)prog.n++;
     await prov.send('wallet_sendCalls',[{version:'2.0.0',from:acct,chainId:hex,atomicRequired:true,calls:calls.map(c=>({to:c.to,value:'0x'+c.value.toString(16),data:c.data}))}]);;prog.n++;
   }else{
     const s=await prov.getSigner(),txs=[];
@@ -390,8 +469,8 @@ async function run(ids){
 async function runInner(ids){
   try{
     if(!ids.length) return;
-    const ev=ids.filter(i=>i!=='sol'),sl=ids.includes('sol');
-    let d='',ds='';
+    const ev=ids.filter(i=>typeof i==='number'),sl=ids.includes('sol');
+    let d='',ds='',db='';
     if(ev.length){
       const v=$('dest').value.trim();
       if(!ethers.isAddress(v)) return say('Enter a valid EVM address (0x...) for your new wallet first.','er');
@@ -399,23 +478,28 @@ async function runInner(ids){
       if(d===acct) return say('The new EVM address is the same as the connected wallet.','er');
     }
     if(sl){ds=solDest();if(!ds) return}
+    if(ids.includes('btc')){db=await btcDest();if(!db) return}
     const E=est(ids);
-    if(!(await ask({title:'Confirm destination',addr:[d&&'EVM: '+d,ds&&'Solana: '+ds].filter(Boolean).join('\n'),lines:[E.n+' wallet approval'+(E.n===1?'':'s')+' across '+E.c+' chain'+(E.c===1?'':'s')+'.',...summ(ids),'Check every character. Your wallet shows the recipient again with each approval.'],ok:'Confirm and continue'}))) return;
+    if(!(await ask({title:'Confirm destination',addr:[d&&'EVM: '+d,ds&&'Solana: '+ds,db&&'Bitcoin: '+db].filter(Boolean).join('\n'),lines:[E.n+' wallet approval'+(E.n===1?'':'s')+' across '+E.c+' chain'+(E.c===1?'':'s')+'.',...summ(ids),...(ids.includes('btc')?['Bitcoin: all spendable BTC is sent. If you hold Ordinals, inscriptions or runes, protect those coins in your wallet first.']:[]),'Check every character. Your wallet shows the recipient again with each approval.'],ok:'Confirm and continue'}))) return;
     prog={n:0,t:E.n};notes=[];$('pNext').hidden=true;
-    for(const id of ids){cur=id;await (id==='sol'?migrateSol(ds):migrate(id))}
+    for(const id of ids){cur=id;await (id==='sol'?migrateSol(ds):id==='btc'?migrateBtc(db):migrate(id))}
     setProg('Complete. '+prog.n+' approval'+(prog.n===1?'':'s')+' submitted.');$('pBar').style.width='100%';$('pNext').hidden=false;
     say('Done.'+(notes.length?' '+notes.join(' '):' Check each chain\u2019s explorer to confirm.'),'ok');
   }catch(e){err(e);if(cur)setSt(cur,'Stopped','er')}
 }
-$('bConnect').onclick=connect;$('bSol').onclick=connectSol;
+$('bConnect').onclick=connect;$('bSol').onclick=connectSol;$('bBtc').onclick=connectBtc;
 $('bAll').onclick=()=>run(IDS());
 let t2;$('destSol').addEventListener('input',()=>{clearTimeout(t2);t2=setTimeout(()=>{
   const v=$('destSol').value.trim();
   try{new solanaWeb3.PublicKey(v)}catch{return}
   if(v!==lastAutoSol&&found.sol){lastAutoSol=v;run(['sol'])}
 },700)});
+let t3,lastAutoBtc='';$('destBtc').addEventListener('input',()=>{clearTimeout(t3);t3=setTimeout(async()=>{
+  const v=$('destBtc').value.trim();
+  if(v&&v!==lastAutoBtc&&found.btc&&await btcValid(v)){lastAutoBtc=v;run(['btc'])}
+},700)});
 let t;$('dest').addEventListener('input',()=>{clearTimeout(t);t=setTimeout(()=>{
   const v=$('dest').value.trim();
-  if(v&&v!==lastAuto&&ethers.isAddress(v)&&Object.keys(found).length){lastAuto=v;run(IDS().filter(i=>i!=='sol'))}
+  if(v&&v!==lastAuto&&ethers.isAddress(v)&&Object.keys(found).length){lastAuto=v;run(IDS().filter(i=>typeof i==='number'))}
 },700)});
 </script></body></html>
