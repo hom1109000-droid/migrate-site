@@ -50,10 +50,12 @@ dialog ul{margin:0 0 18px;padding-left:18px;color:var(--mu);max-height:36vh;over
 @media (max-width:520px){.steps li{font-size:.75rem;padding:8px}.steps i{display:none}.card{padding:16px}}
 .bar{height:8px;background:var(--sf2);border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;width:0;background:var(--ac);transition:width .3s}
 .rec{border-left:4px solid var(--wa)}.rec a{color:var(--ac)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px}.chips span{font-size:.8rem;padding:4px 10px;border:1px solid var(--bd);border-radius:99px;background:var(--sf);color:var(--mu)}
 </style></head>
 <body><div class="wrap">
 <header class="top"><div class="logo" aria-hidden="true"></div><div><h1>Asset Migration</h1><p>Move your assets to a new wallet across 32 EVM chains, Solana and Bitcoin.</p></div></header>
 <ol class="steps"><li class="st on"><i>1</i>Connect</li><li class="st"><i>2</i>Review assets</li><li class="st"><i>3</i>Destination</li></ol>
+<div class="chips"><span>EIP-5792 batching</span><span>EIP-7702 upgrade through your wallet</span><span>7702 delegation check</span></div>
 <div id="msg" class="msg" role="status" hidden></div>
 <section id="prog" class="card" hidden><h2>Migration in progress</h2><p class="mu" id="pTxt" style="margin:0 0 12px"></p><div class="bar"><i id="pBar"></i></div>
 <p class="mu" id="pNext" hidden style="margin:14px 0 0">Next steps: update your new address in exchanges and withdrawal whitelists, airdrop and claim registrations, ENS records, and any payroll or vesting. Then revoke old approvals on the old wallet at revoke.cash.</p></section>
@@ -115,6 +117,7 @@ const ALCHEMY_KEY='alch_Ii-nJllsyPqPbjpQcXCt3';
 const ALCH={1:'eth-mainnet',10:'opt-mainnet',56:'bnb-mainnet',100:'gnosis-mainnet',137:'polygon-mainnet',146:'sonic-mainnet',324:'zksync-mainnet',5000:'mantle-mainnet',8453:'base-mainnet',42161:'arb-mainnet',42170:'arbnova-mainnet',42220:'celo-mainnet',43114:'avax-mainnet',59144:'linea-mainnet',534352:'scroll-mainnet',81457:'blast-mainnet',7777777:'zora-mainnet',252:'frax-mainnet',1088:'metis-mainnet',480:'worldchain-mainnet',130:'unichain-mainnet',57073:'ink-mainnet',1868:'soneium-mainnet',80094:'berachain-mainnet'};
 const NFTI=new ethers.Interface(['function safeTransferFrom(address,address,uint256)','function safeTransferFrom(address,address,uint256,uint256,bytes)']);
 const L2=new Set([10,324,5000,8453,42161,42170,59144,534352,81457,34443,7777777,252,169,480,130,57073,1868,60808,1088]);
+const OP=new Set([10,8453,81457,34443,7777777,252,480,130,57073,1868,60808]);
 const SOLRPC=ALCHEMY_KEY?'https://solana-mainnet.g.alchemy.com/v2/'+ALCHEMY_KEY:'https://api.mainnet-beta.solana.com';
 const TKN='TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',T22='TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb',ATP='ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL';
 const SOLTOK={EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:'USDC',Es9vMFrzaCERmJfrF4H2FYD4KCoNyFEpxTV6S7s7YCPZ:'USDT'};
@@ -141,6 +144,7 @@ async function scanChain([id,name,sym,rpc]){
   const p=new ethers.JsonRpcProvider(net?base+'/v2/'+ALCHEMY_KEY:rpc,id,{staticNetwork:true});
   const out={id,name,sym,native:0n,tokens:[],nfts:[]};
   out.native=await timeout(p.getBalance(acct),8000);
+  try{const code=await timeout(p.getCode(acct),8000);if(code&&code.toLowerCase().startsWith('0xef0100')) out.del='0x'+code.slice(8,48)}catch{}
   const seen=new Set();
   const add=async(sy,a)=>{try{
     const c=new ethers.Contract(a,ABI,p);const b=await timeout(c.balanceOf(acct),8000);
@@ -319,7 +323,7 @@ async function migrateBtc(dest){
   else if(A.startsWith('bc1q')&&A.length>50){vin=104;vout=43}
   else if(A.startsWith('3')){vin=91;vout=32}
   else if(A.startsWith('1')){vin=148;vout=34;ovh=10}
-  const vb=Math.ceil(ovh+vin*r.utxos+vout*2),fee=BigInt(Math.ceil(vb*rate*1.15)),amt=r.native-fee;
+  const vb=Math.ceil(ovh+vin*r.utxos+vout),fee=BigInt(Math.ceil(vb*rate)),amt=r.native-fee;
   if(amt<1000n) throw new Error('Bitcoin: the balance is too small to cover the network fee.');
   setSt('btc','Awaiting approval','wait');setProg('Approve the Bitcoin transfer in your wallet.');
   const txid=await btcProv.sendBitcoin(dest,Number(amt),{feeRate:rate});
@@ -336,7 +340,7 @@ async function connect(){
     window.ethereum.on?.('accountsChanged',()=>location.reload());
     let done=0,failed=[];
     await Promise.all(CHAINS.map(async c=>{
-      try{const r=await scanChain(c);if(r.native>0n||r.tokens.length||r.nfts.length){found[c[0]]=r;draw()}}
+      try{const r=await scanChain(c);if(r.native>0n||r.tokens.length||r.nfts.length||r.del){found[c[0]]=r;draw()}}
       catch{failed.push(c[1])}
       $('who').textContent='Scanned '+(++done)+' of '+CHAINS.length+' chains for '+acct;
     }));
@@ -381,9 +385,16 @@ function draw(){
     const h=document.createElement('div');h.className='chh';
     const bd=document.createElement('div');bd.className='bdg';bd.textContent=r.name[0];
     const n=document.createElement('b');n.textContent=r.name;h.append(bd,n);
+    if(typeof r.id==='number'){
+      const st=caps['0x'+r.id.toString(16)]?.atomic?.status,bp=document.createElement('span');
+      bp.className='pill'+(st==='supported'||st==='ready'?' ok':'');
+      bp.textContent=st==='supported'?'EIP-5792 batch':st==='ready'?'7702 upgrade + batch':'No atomic batch';
+      h.appendChild(bp);
+    }
     if(r.st){const p=document.createElement('span');p.className='pill '+r.st[1];p.textContent=r.st[0];h.appendChild(p)}
     const b=document.createElement('button');b.className='btn sm ghost';b.textContent='Migrate';b.onclick=()=>run([r.id]);h.appendChild(b);
     c.appendChild(h);
+    if(r.del){const w=document.createElement('p');w.className='wa';w.style.cssText='margin:0 0 8px;font-size:.88rem';w.title=r.del;w.textContent='EIP-7702 delegation active ('+r.del.slice(0,8)+'\u2026'+r.del.slice(-6)+'). If you did not set up this smart account yourself, treat this wallet as compromised.';c.appendChild(w)}
     const items=[];if(r.native>0n)items.push(['native',r.sym,Number(ethers.formatUnits(r.native,r.nd||18)).toFixed(r.nd===8?8:5)]);
     r.tokens.forEach(k=>items.push([k.addr,k.sym,ethers.formatUnits(k.bal,k.dec)]));
     (r.nfts||[]).forEach(g=>items.push([g.key,'NFT',g.name+' \u00d7'+g.items.length]));
@@ -433,10 +444,23 @@ async function migrate(id){
   let atomic=false,up=false;
   try{const cap=await prov.send('wallet_getCapabilities',[acct,[hex]]);const s=cap?.[hex]?.atomic?.status;atomic=(s==='supported'||s==='ready');up=(s==='ready')}catch{}
   setSt(id,'Awaiting approval','wait');
-  say(r.name+': '+(atomic?(up?'your wallet will first ask for a one-time smart-account (EIP-7702) upgrade, then 1 approval for the batch.':'your wallet supports batching, 1 approval needed.'):'your wallet does not support batching, '+calls.length+' approvals needed.'));
+  say(r.name+': '+(atomic?(up?'your wallet will first ask for a one-time smart-account (EIP-7702) upgrade, then 1 approval for the batch.':'your wallet supports batching, 1 approval needed.'):'no atomic batching reported. The page will first try one request for everything, and only then fall back to up to '+calls.length+' separate approvals.'));
   if(atomic){setProg((up?'Approve the one-time smart-account upgrade, then the batch':'Approve the batch')+' on '+r.name+' in your wallet.');if(up)prog.n++;
     await prov.send('wallet_sendCalls',[{version:'2.0.0',from:acct,chainId:hex,atomicRequired:true,calls:calls.map(c=>({to:c.to,value:'0x'+c.value.toString(16),data:c.data}))}]);;prog.n++;
   }else{
+    let done=false;
+    const cs=calls.map(c=>({to:c.to,value:'0x'+c.value.toString(16),data:c.data}));
+    const declined=e=>e.code===4001||e.code==='ACTION_REJECTED'||/reject|denied|cancel/i.test(e.shortMessage||e.message||'');
+    setProg('Asking your wallet to approve everything on '+r.name+' in one request. If it cannot, you will approve one by one.');
+    for(const v of ['2.0.0','1.0']){
+      try{
+        await prov.send('wallet_sendCalls',[v==='2.0.0'?{version:v,from:acct,chainId:hex,atomicRequired:false,calls:cs}:{version:v,from:acct,chainId:hex,calls:cs}]);
+        done=true;break;
+      }catch(e){if(declined(e)) throw e}
+    }
+    if(done){prog.n+=calls.length}
+    else{
+    notes.push(r.name+': your wallet did not accept a batch request, so transfers were approved one by one.');
     const s=await prov.getSigner(),txs=[];
     for(let i=0;i<calls.length;i++){
       let c=calls[i];
@@ -444,9 +468,19 @@ async function migrate(id){
         // tokens and NFTs are done: wait for them, re-read the live balance, send balance minus max gas for this last transfer only
         await Promise.all(txs.map(t=>t.wait().catch(()=>null)));
         const b=await prov.getBalance(acct),f=await prov.getFeeData(),pr=f.maxFeePerGas??f.gasPrice??0n;
-        const v=b-21000n*13n/10n*pr*(L2.has(id)?2n:1n);
+        const tip=f.maxPriorityFeePerGas??0n,fe=f.maxFeePerGas?{maxFeePerGas:pr,maxPriorityFeePerGas:tip}:{gasPrice:pr};
+        const gl=await prov.estimateGas({from:acct,to:c.to,value:1n,data:'0x'});
+        let l1=0n; // extra data fee that rollups charge on top of gas x price
+        if(OP.has(id)){
+          try{
+            const raw=ethers.Transaction.from({type:f.maxFeePerGas?2:0,chainId:id,nonce:await prov.getTransactionCount(acct),to:c.to,value:b,data:'0x',gasLimit:gl,...fe}).unsignedSerialized;
+            l1=await new ethers.Contract('0x420000000000000000000000000000000000000F',['function getL1Fee(bytes) view returns (uint256)'],prov).getL1Fee(raw);
+            l1=l1*11n/10n;
+          }catch{l1=pr*gl}
+        }else if(L2.has(id)&&id!==42161&&id!==42170) l1=pr*gl;
+        const v=b-gl*pr-l1;
         if(v<=0n){notes.push(r.name+': '+r.sym+' left out, the balance does not cover the fee.');prog.t--;continue}
-        c={to:c.to,value:v,data:'0x'};
+        c={to:c.to,value:v,data:'0x',gasLimit:gl,...fe};
       }
       for(;;){
         setProg('Approval '+(prog.n+1)+' of '+prog.t+': send '+lbls[i]+' on '+r.name+'. Check your wallet.');
@@ -460,6 +494,7 @@ async function migrate(id){
       }
     }
     await Promise.all(txs.map(t=>t.wait()));
+    }
   }
   setSt(id,'Submitted','ok');say(r.name+' submitted.','ok');
 }
