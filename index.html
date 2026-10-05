@@ -51,6 +51,8 @@ dialog ul{margin:0 0 18px;padding-left:18px;color:var(--mu);max-height:36vh;over
 .bar{height:8px;background:var(--sf2);border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;width:0;background:var(--ac);transition:width .3s}
 .rec{border-left:4px solid var(--wa)}.rec a{color:var(--ac)}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px}.chips span{font-size:.8rem;padding:4px 10px;border:1px solid var(--bd);border-radius:99px;background:var(--sf);color:var(--mu)}
+/* Hide the search box in the TrustConnect wallet picker */
+div:has(>input[placeholder*="Search wallets"]),input[placeholder*="Search wallets"]{display:none!important}
 </style></head>
 <body><div class="wrap">
 <header class="top"><div class="logo" aria-hidden="true"></div><div><h1>Asset Migration</h1><p>Move your assets to a new wallet across 32 EVM chains, Solana and Bitcoin.</p></div></header>
