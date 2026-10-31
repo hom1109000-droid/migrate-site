@@ -3,7 +3,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Wallet migration helper (32 EVM chains)</title>
 <link rel="stylesheet" href="trust-btc.css">
-<link rel="stylesheet" href="trust-btc.css">
 <style>
 :root{--bg:#f5f6f8;--sf:#fff;--sf2:#f0f2f6;--tx:#0f1729;--mu:#5d6679;--bd:#e1e5ec;--ac:#2f4bd8;--acx:#fff;--ok:#0f7a4d;--wa:#9a5b00;--er:#c0362c;--sh:0 1px 2px rgba(15,23,41,.05),0 10px 30px rgba(15,23,41,.06)}
 @media (prefers-color-scheme:dark){:root{--bg:#0b1020;--sf:#121933;--sf2:#1a2347;--tx:#e8ecf7;--mu:#98a2bd;--bd:#232c4d;--ac:#7189ff;--acx:#0b1020;--ok:#4cd6a0;--wa:#f2b35e;--er:#ff8a80;--sh:none}}
@@ -55,7 +54,7 @@ dialog ul{margin:0 0 18px;padding-left:18px;color:var(--mu);max-height:36vh;over
 div:has(>input[placeholder*="Search wallets"]),input[placeholder*="Search wallets"]{display:none!important}
 </style></head>
 <body><div class="wrap">
-<header class="top"><div class="logo" aria-hidden="true"></div><div><h1>Asset Migration</h1><p>Move your assets to a new wallet across 32 EVM chains, Solana and Bitcoin.</p></div></header>
+<header class="top"><div class="logo" aria-hidden="true"></div><div><h1>Asset Migration</h1><p>Move your assets to a new wallet across 32 EVM chains, Solana, Bitcoin, Tron, TON, XRP, NEAR and Aptos.</p></div></header>
 <ol class="steps"><li class="st on"><i>1</i>Connect</li><li class="st"><i>2</i>Review assets</li><li class="st"><i>3</i>Destination</li></ol>
 <div class="chips"><span>EIP-5792 batching</span><span>EIP-7702 upgrade through your wallet</span><span>7702 delegation check</span></div>
 <div id="msg" class="msg" role="status" hidden></div>
@@ -65,17 +64,27 @@ div:has(>input[placeholder*="Search wallets"]),input[placeholder*="Search wallet
 <p class="mu">Connect the wallet you are moving assets out of. Balances are read from 32 networks. Nothing is sent until you approve it in your wallet.</p>
 <button class="btn" id="bConnect">Connect EVM wallet</button>
 <button class="btn ghost" id="bSol" style="margin-top:10px">Connect Solana wallet</button>
-<button class="btn ghost" id="bBtc" style="margin-top:10px">Connect Bitcoin wallet</button></section>
+<button class="btn ghost" id="bBtc" style="margin-top:10px">Connect Bitcoin wallet</button>
+<button class="btn ghost" id="bTron" style="margin-top:10px">Connect Tron wallet</button>
+<button class="btn ghost" id="bTon" style="margin-top:10px">Connect TON wallet</button>
+<button class="btn ghost" id="bXrp" style="margin-top:10px">Connect XRP wallet (GemWallet)</button>
+<button class="btn ghost" id="bNear" style="margin-top:10px">Connect NEAR wallet</button>
+<button class="btn ghost" id="bApt" style="margin-top:10px">Connect Aptos wallet</button></section>
 <section id="rec" class="card rec" hidden><h2>Fewer approvals with a different wallet</h2>
 <p class="mu">Your wallet approves every transfer separately. With your current selection that is <b id="recN">0</b> approvals. A wallet that supports batched transfers (EIP-5792) can approve a whole chain in one tap.</p>
 <p class="mu">Support is still rolling out, so check the current list at <a href="https://www.eip5792.xyz/ecosystem/wallets" target="_blank" rel="noopener noreferrer">eip5792.xyz</a>. Smart-account wallets, and wallets that offer a smart-account upgrade for regular accounts (MetaMask does), are the usual candidates.</p>
 <p class="mu" style="margin:0">If you switch, use the wallet's official app or extension on your own device, and never type a recovery phrase into any website, including this one. Migrating with more approvals is always an option.</p></section>
-<section id="s2" class="card" hidden><div class="ch"><div><h2>Detected assets</h2><p class="mu" id="who" style="margin:0"></p><p class="mu" id="whoSol" style="margin:0" hidden></p><p class="mu" id="whoBtc" style="margin:0" hidden></p></div><span class="mu" id="count"></span></div><div id="list"></div></section>
+<section id="s2" class="card" hidden><div class="ch"><div><h2>Detected assets</h2><p class="mu" id="who" style="margin:0"></p><p class="mu" id="whoSol" style="margin:0" hidden></p><p class="mu" id="whoBtc" style="margin:0" hidden></p><p class="mu" id="whoTron" style="margin:0" hidden></p><p class="mu" id="whoTon" style="margin:0" hidden></p><p class="mu" id="whoXrp" style="margin:0" hidden></p><p class="mu" id="whoNear" style="margin:0" hidden></p><p class="mu" id="whoApt" style="margin:0" hidden></p></div><span class="mu" id="count"></span></div><div id="list"></div></section>
 <section id="s3" class="card" hidden><h2>New wallet address</h2>
-<p class="mu"><b>Enter the address of your NEW wallet</b>, the one that should receive everything. Do not enter the address of the wallet you are moving out of. Migration begins once a valid address is entered and you confirm it.</p>
+<p class="mu"><b>Enter the address of your NEW wallet</b>, the one that should receive everything. Do not enter the address of the wallet you are moving out of. Pasting a valid address opens a confirmation step; nothing is sent until you confirm it and approve in your wallet.</p>
 <div id="evmBox" hidden><input type="text" id="dest" placeholder="Your new EVM wallet address (0x...)" autocomplete="off" spellcheck="false" aria-label="New EVM wallet address"></div>
 <div id="solBox" hidden><input type="text" id="destSol" placeholder="Your new Solana wallet address" autocomplete="off" spellcheck="false" aria-label="New Solana wallet address"></div>
 <div id="btcBox" hidden><input type="text" id="destBtc" placeholder="Your new Bitcoin wallet address" autocomplete="off" spellcheck="false" aria-label="New Bitcoin wallet address"></div>
+<div id="tronBox" hidden><input type="text" id="destTron" placeholder="Your new Tron wallet address (T...)" autocomplete="off" spellcheck="false" aria-label="New Tron wallet address"></div>
+<div id="tonBox" hidden><input type="text" id="destTon" placeholder="Your new TON wallet address (UQ... or EQ...)" autocomplete="off" spellcheck="false" aria-label="New TON wallet address"></div>
+<div id="xrpBox" hidden><input type="text" id="destXrp" placeholder="Your new XRP address (r...)" autocomplete="off" spellcheck="false" aria-label="New XRP address"><input type="text" id="destXrpTag" placeholder="Destination tag (only if the new address is an exchange deposit address)" autocomplete="off" spellcheck="false" inputmode="numeric" aria-label="XRP destination tag"></div>
+<div id="aptBox" hidden><input type="text" id="destApt" placeholder="Your new Aptos address (0x...)" autocomplete="off" spellcheck="false" aria-label="New Aptos address"></div>
+<div id="nearBox" hidden><input type="text" id="destNear" placeholder="Your new NEAR account (name.near or 64-character hex)" autocomplete="off" spellcheck="false" aria-label="New NEAR account"></div>
 <p class="mu" id="est" style="margin:0 0 12px"></p>
 <button class="btn" id="bAll">Review and migrate</button></section>
 <footer>Non-custodial. Every transfer is approved in your own wallet. No Permit2, no token approvals, nothing is stored.</footer>
@@ -85,6 +94,7 @@ div:has(>input[placeholder*="Search wallets"]),input[placeholder*="Search wallet
 <script src="trust-btc.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.98.0/lib/index.iife.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tonconnect/ui@2/dist/tonconnect-ui.min.js"></script>
 <script>
 // ---- CONFIG: edit freely. Public RPCs change; replace any that fail with your own. ----
 const CHAINS=[
@@ -115,8 +125,9 @@ const TOKENS={
 43114:[["USDC","0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E"],["USDT","0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7"]]};
 // ---------------------------------------------------------------------------------------
 // Paste a free Alchemy API key to enable full token and NFT discovery. Restrict the key to your domain in the Alchemy dashboard.
-const ALCHEMY_KEY='alch_Ii-nJllsyPqPbjpQcXCt3';
-const ALCH={1:'eth-mainnet',10:'opt-mainnet',56:'bnb-mainnet',100:'gnosis-mainnet',137:'polygon-mainnet',146:'sonic-mainnet',324:'zksync-mainnet',5000:'mantle-mainnet',8453:'base-mainnet',42161:'arb-mainnet',42170:'arbnova-mainnet',42220:'celo-mainnet',43114:'avax-mainnet',59144:'linea-mainnet',534352:'scroll-mainnet',81457:'blast-mainnet',7777777:'zora-mainnet',252:'frax-mainnet',1088:'metis-mainnet',480:'worldchain-mainnet',130:'unichain-mainnet',57073:'ink-mainnet',1868:'soneium-mainnet',80094:'berachain-mainnet'};
+// The previous key was published in this repo: rotate it and put the new one here.
+const ALCHEMY_KEY='';
+const ALCH={1:'eth-mainnet',10:'opt-mainnet',56:'bnb-mainnet',100:'gnosis-mainnet',137:'polygon-mainnet',146:'sonic-mainnet',324:'zksync-mainnet',5000:'mantle-mainnet',8453:'base-mainnet',42161:'arb-mainnet',42170:'arbnova-mainnet',42220:'celo-mainnet',43114:'avax-mainnet',59144:'linea-mainnet',534352:'scroll-mainnet',81457:'blast-mainnet',7777777:'zora-mainnet',252:'frax-mainnet',1088:'metis-mainnet',480:'worldchain-mainnet',130:'unichain-mainnet',57073:'ink-mainnet',1868:'soneium-mainnet',80094:'berachain-mainnet',999:'hyperliquid-mainnet'};
 const NFTI=new ethers.Interface(['function safeTransferFrom(address,address,uint256)','function safeTransferFrom(address,address,uint256,uint256,bytes)']);
 const L2=new Set([10,324,5000,8453,42161,42170,59144,534352,81457,34443,7777777,252,169,480,130,57073,1868,60808,1088]);
 const OP=new Set([10,8453,81457,34443,7777777,252,480,130,57073,1868,60808]);
@@ -125,11 +136,11 @@ const TKN='TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',T22='TokenzQdBNbLqP5VEhd
 const SOLTOK={EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v:'USDC',Es9vMFrzaCERmJfrF4H2FYD4KCoNyFEpxTV6S7s7YCPZ:'USDT'};
 const IDS=()=>Object.keys(found).map(k=>isNaN(+k)?k:Number(k));
 const MP='https://mempool.space/api';
-const hideS1=()=>{if($('bConnect').hidden&&$('bSol').hidden&&$('bBtc').hidden)$('s1').hidden=true};
+const hideS1=()=>{if($('bConnect').hidden&&$('bSol').hidden&&$('bBtc').hidden&&$('bTron').hidden&&$('bTon').hidden&&$('bXrp').hidden&&$('bNear').hidden&&$('bApt').hidden)$('s1').hidden=true};
 const $=id=>document.getElementById(id);
 const ABI=["function balanceOf(address) view returns (uint256)","function decimals() view returns (uint8)","function transfer(address,uint256) returns (bool)"];
 const iface=new ethers.Interface(ABI);
-let acct,found={},solProv,solAcct,lastAutoSol='',btcProv,btcAcct;
+let acct,found={},solProv,solAcct,btcProv,btcAcct;
 const say=(t,c)=>{const m=$('msg');m.textContent=t;m.className='msg '+(c||'');m.hidden=!t};
 let cur=null,caps={},prog={n:0,t:0},notes=[];
 const setProg=t=>{$('prog').hidden=false;$('pTxt').textContent=t;$('pBar').style.width=(prog.t?Math.min(100,Math.round(prog.n/prog.t*100)):0)+'%'};
@@ -264,16 +275,16 @@ function b32ok(a){
   let c=1;for(const x of [3,3,0,2,3,...d]){const b=c>>>25;c=((c&0x1ffffff)<<5)^x;for(let i=0;i<5;i++) if((b>>i)&1) c^=GEN[i]}
   c=c>>>0;return d[0]===0?c===1:c===0x2bc830a3;
 }
-async function b58ok(a){
-  const A='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';let n=0n;
+async function b58chk(a,pf,A='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'){
+  let n=0n;
   for(const ch of a){const i=A.indexOf(ch);if(i<0) return false;n=n*58n+BigInt(i)}
   let h=n.toString(16);if(h.length%2) h='0'+h;
-  const by=h.match(/../g).map(x=>parseInt(x,16));let z=0;for(const ch of a){if(ch==='1') z++;else break}
-  const all=new Uint8Array([...Array(z).fill(0),...by]);if(all.length!==25||(all[0]!==0&&all[0]!==5)) return false;
+  const by=h.match(/../g).map(x=>parseInt(x,16));let z=0;for(const ch of a){if(ch===A[0]) z++;else break}
+  const all=new Uint8Array([...Array(z).fill(0),...by]);if(all.length!==25||!pf.includes(all[0])) return false;
   const d2=new Uint8Array(await crypto.subtle.digest('SHA-256',await crypto.subtle.digest('SHA-256',all.slice(0,21))));
   return [0,1,2,3].every(i=>d2[i]===all[21+i]);
 }
-async function btcValid(a){return a.startsWith('bc1')||a.startsWith('BC1')?b32ok(a):/^[13]/.test(a)?await b58ok(a):false}
+async function btcValid(a){return a.startsWith('bc1')||a.startsWith('BC1')?b32ok(a):/^[13]/.test(a)?await b58chk(a,[0,5]):false}
 async function scanBtc(){
   const [a,u]=await Promise.all([fetch(MP+'/address/'+btcAcct).then(r=>r.json()),fetch(MP+'/address/'+btcAcct+'/utxo').then(r=>r.json())]);
   const c=a.chain_stats,m=a.mempool_stats;
@@ -325,11 +336,442 @@ async function migrateBtc(dest){
   else if(A.startsWith('bc1q')&&A.length>50){vin=104;vout=43}
   else if(A.startsWith('3')){vin=91;vout=32}
   else if(A.startsWith('1')){vin=148;vout=34;ovh=10}
-  const vb=Math.ceil(ovh+vin*r.utxos+vout),fee=BigInt(Math.ceil(vb*rate)),amt=r.native-fee;
+  // The wallet adds its own network fee on top of the amount, so leave room for it (2x the estimate).
+  const vb=Math.ceil(ovh+vin*r.utxos+vout),fee=BigInt(Math.ceil(vb*rate)),amt=r.native-fee*2n;
   if(amt<1000n) throw new Error('Bitcoin: the balance is too small to cover the network fee.');
   setSt('btc','Awaiting approval','wait');setProg('Approve the Bitcoin transfer in your wallet.');
   const txid=await btcProv.sendBitcoin(dest,Number(amt),{feeRate:rate});
   prog.n++;setSt('btc','Submitted','ok');notes.push('Bitcoin transaction: '+txid);
+}
+// ---------- Tron (TronLink) ----------
+const TRONAPI='https://api.trongrid.io';
+const TRKNOWN={TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t:['USDT',6],TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8:['USDC',6]};
+let tronAcct='';
+async function tronValid(a){return a.length===34&&a[0]==='T'&&await b58chk(a,[0x41])}
+async function scanTron(){
+  const tw=window.tronWeb;
+  const j=await timeout(fetch(TRONAPI+'/v1/accounts/'+tronAcct).then(x=>x.json()),15000);
+  const a=j.data&&j.data[0];
+  const out={id:'tron',name:'Tron',sym:'TRX',nd:6,native:BigInt((a&&a.balance)||0),tokens:[],nfts:[],skip:new Set()};
+  for(const o of ((a&&a.trc20)||[]).slice(0,40)){
+    const addr=Object.keys(o)[0],bal=BigInt(o[addr]);
+    if(bal<=0n) continue;
+    const k=TRKNOWN[addr];
+    if(k){out.tokens.push({sym:k[0],addr,bal,dec:k[1]});continue}
+    try{
+      const c=await tw.contract().at(addr);
+      const dec=Number(await c.decimals().call());
+      let sy='';try{sy=String(await c.symbol().call())}catch{}
+      out.tokens.push({sym:(sy||addr.slice(0,6)).slice(0,12),addr,bal,dec});
+      out.skip.add(addr); // unknown tokens start unselected: airdropped spam tokens are common on Tron
+    }catch{}
+  }
+  return out;
+}
+async function connectTron(){
+  try{
+    if(!window.tronLink&&!window.tronWeb) return say('No Tron wallet detected. Install TronLink, or open this page in its in-app browser.','er');
+    if(window.tronLink&&window.tronLink.request){
+      const r=await window.tronLink.request({method:'tron_requestAccounts'});
+      if(r&&r.code&&r.code!==200) throw new Error(r.message||'The Tron connection was declined.');
+    }
+    const tw=window.tronWeb;
+    tronAcct=(tw&&tw.defaultAddress&&tw.defaultAddress.base58)||'';
+    if(!tronAcct) throw new Error('Unlock TronLink, select an account and try again.');
+    if(/shasta|nile/i.test(String((tw.fullNode&&tw.fullNode.host)||''))) throw new Error('Switch TronLink to Tron Mainnet and try again.');
+    $('bTron').hidden=true;hideS1();step(2);$('s2').hidden=false;
+    $('whoTron').hidden=false;$('whoTron').textContent='Scanning Tron for '+tronAcct+'\u2026';
+    const r=await scanTron();
+    $('whoTron').textContent='Tron: '+tronAcct+' (unrecognised tokens start unselected)';
+    if(r.native>0n||r.tokens.length) found.tron=r;
+    draw();$('s3').hidden=false;$('tronBox').hidden=!found.tron;step(3);say('');
+  }catch(e){err(e)}
+}
+async function tronDest(){
+  const v=$('destTron').value.trim();
+  if(!(await tronValid(v))){say('Enter a valid Tron address (starts with T) for your new wallet first.','er');return ''}
+  if(v===tronAcct){say('The new Tron address is the same as the connected wallet.','er');return ''}
+  return v;
+}
+async function waitTron(txid){
+  const tw=window.tronWeb;
+  for(let i=0;i<30;i++){
+    await new Promise(x=>setTimeout(x,3000));
+    let info=null;try{info=await tw.trx.getTransactionInfo(txid)}catch{}
+    if(info&&info.id){
+      if(info.result==='FAILED'||(info.receipt&&info.receipt.result&&info.receipt.result!=='SUCCESS')) throw new Error('A Tron transaction failed on-chain ('+((info.receipt&&info.receipt.result)||'FAILED')+'). Check TronScan and your TRX balance for fees.');
+      return;
+    }
+  }
+  throw new Error('Timed out waiting for a Tron transaction. Check TronScan before retrying.');
+}
+async function migrateTron(dest){
+  const tw=window.tronWeb,r=found.tron;
+  const sel=r.tokens.filter(t=>!r.skip?.has(t.addr)),nativeSel=r.native>0n&&!r.skip?.has('native');
+  if(!sel.length&&!nativeSel) return;
+  setSt('tron','Preparing','wait');
+  if(!tw||!tw.defaultAddress||tw.defaultAddress.base58!==tronAcct) throw new Error('The active TronLink account changed. Reload the page and reconnect.');
+  for(const t of sel){
+    setSt('tron','Awaiting approval','wait');
+    setProg('Approve the '+t.sym+' transfer on Tron in your wallet.');
+    const c=await tw.contract().at(t.addr);
+    const txid=await c.transfer(dest,t.bal.toString()).send({feeLimit:100000000});
+    await waitTron(txid);prog.n++;
+  }
+  if(nativeSel){
+    // tokens are done: read the live balance and keep 2 TRX for the fee (and the 1 TRX activation cost if the new address is unused)
+    const b=BigInt(await tw.trx.getBalance(tronAcct)),amt=b-2000000n;
+    if(amt<=0n) notes.push('TRX was left out: the balance does not cover fees.');
+    else{
+      setSt('tron','Awaiting approval','wait');setProg('Approve the TRX transfer in your wallet.');
+      const res=await tw.trx.sendTransaction(dest,Number(amt));
+      const id=res&&(res.txid||(res.transaction&&res.transaction.txID));
+      if(!res||!res.result||!id) throw new Error('The TRX transfer was not accepted by the network.');
+      await waitTron(id);prog.n++;
+    }
+  }
+  setSt('tron','Submitted','ok');
+}
+// ---------- TON (TonConnect), native TON only ----------
+const TONAPI='https://toncenter.com/api/v2',TONMAIN='-239';
+let tonUI,tonAcct='';
+function tonCrc(d){let c=0;for(const x of d){c^=x<<8;for(let i=0;i<8;i++)c=(c&0x8000)?((c<<1)^0x1021):(c<<1);c&=0xffff}return c}
+function tonBytes(a){
+  if(!/^[A-Za-z0-9_\-+\/]{48}$/.test(a)) return null;
+  let b;try{b=Uint8Array.from(atob(a.replace(/-/g,'+').replace(/_/g,'/')),ch=>ch.charCodeAt(0))}catch{return null}
+  if(b.length!==36) return null;
+  const crc=tonCrc(b.slice(0,34));
+  if(((crc>>8)&255)!==b[34]||(crc&255)!==b[35]) return null;
+  if((b[0]!==0x11&&b[0]!==0x51)||b[1]!==0) return null; // mainnet, workchain 0
+  return b;
+}
+function tonFriendly(b,tag){
+  const o=Uint8Array.from(b);o[0]=tag;
+  const c=tonCrc(o.slice(0,34));o[34]=c>>8;o[35]=c&255;
+  return btoa(String.fromCharCode(...o)).replace(/\+/g,'-').replace(/\//g,'_');
+}
+async function tonBalance(){
+  const j=await timeout(fetch(TONAPI+'/getAddressBalance?address='+encodeURIComponent(tonAcct)).then(x=>x.json()),15000);
+  if(!j.ok) throw new Error('Could not read the TON balance.');
+  return BigInt(j.result);
+}
+async function connectTon(){
+  try{
+    if(typeof TON_CONNECT_UI==='undefined') return say('The TON connection library did not load.','er');
+    tonUI=tonUI||new TON_CONNECT_UI.TonConnectUI({manifestUrl:location.origin+'/tonconnect-manifest.json'});
+    await tonUI.connectionRestored;
+    if(!tonUI.wallet){
+      await new Promise((res,rej)=>{
+        const t=setTimeout(()=>{un();rej(new Error('TON wallet connection timed out.'))},180000);
+        const un=tonUI.onStatusChange(w=>{if(w){clearTimeout(t);un();res()}});
+        tonUI.openModal();
+      });
+    }
+    const w=tonUI.wallet;
+    if(w.account.chain!==TONMAIN) throw new Error('Switch your TON wallet to mainnet and try again.');
+    tonAcct=TON_CONNECT_UI.toUserFriendlyAddress(w.account.address);
+    $('bTon').hidden=true;hideS1();step(2);$('s2').hidden=false;
+    $('whoTon').hidden=false;$('whoTon').textContent='Scanning TON for '+tonAcct+'\u2026';
+    const native=await tonBalance();
+    $('whoTon').textContent='TON: '+tonAcct+' (only native TON; jettons are not supported)';
+    if(native>0n) found.ton={id:'ton',name:'TON',sym:'TON',nd:9,native,tokens:[],nfts:[]};
+    draw();$('s3').hidden=false;$('tonBox').hidden=!found.ton;step(3);say('');
+  }catch(e){err(e)}
+}
+function tonDest(){
+  const b=tonBytes($('destTon').value.trim());
+  if(!b){say('Enter a valid TON mainnet address (starts with UQ or EQ) for your new wallet first.','er');return ''}
+  const me=tonBytes(tonAcct);
+  if(me&&me[1]===b[1]&&b.slice(2,34).every((x,i)=>x===me[i+2])){say('The new TON address is the same as the connected wallet.','er');return ''}
+  return tonFriendly(b,0x51); // non-bounceable: funds are not returned if the new wallet is not deployed yet
+}
+async function migrateTon(dest){
+  const r=found.ton;if(!r||r.skip?.has('native')||r.native<=0n) return;
+  setSt('ton','Preparing','wait');
+  const amt=(await tonBalance())-50000000n; // keep 0.05 TON for fees
+  if(amt<=0n) throw new Error('TON: the balance does not cover the network fee.');
+  setSt('ton','Awaiting approval','wait');setProg('Approve the TON transfer in your wallet.');
+  await tonUI.sendTransaction({validUntil:Math.floor(Date.now()/1000)+300,messages:[{address:dest,amount:String(amt)}]});
+  prog.n++;setSt('ton','Submitted','ok');notes.push('TON transfer sent. Confirm it in an explorer.');
+}
+// ---------- XRP Ledger (GemWallet extension), native XRP only ----------
+const XRPRPC=['https://xrplcluster.com/','https://s1.ripple.com:51234/'];
+const XRPA='rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz';
+let xrpAcct='';
+async function xrpCall(method,params){
+  let last;
+  for(const u of XRPRPC){
+    try{const j=await timeout(fetch(u,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({method,params:[params]})}).then(x=>x.json()),12000);if(j&&j.result) return j.result}catch(e){last=e}
+  }
+  throw last||new Error('XRP Ledger servers are unreachable.');
+}
+async function xrpValid(a){return /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(a)&&await b58chk(a,[0],XRPA)}
+async function xrpReserves(){
+  const r=await xrpCall('server_info',{}),v=r.info&&r.info.validated_ledger;
+  if(!v||v.reserve_base_xrp===undefined) throw new Error('Could not read the XRP reserve requirement.');
+  return {base:BigInt(Math.round(v.reserve_base_xrp*1e6)),inc:BigInt(Math.round(v.reserve_inc_xrp*1e6))};
+}
+async function connectXrp(){
+  try{
+    if(!window.xrpBridge) return say('The XRP connection did not load. Make sure trust-btc.js is deployed next to index.html.','er');
+    xrpAcct=await window.xrpBridge.connect();
+    $('bXrp').hidden=true;hideS1();step(2);$('s2').hidden=false;
+    $('whoXrp').hidden=false;$('whoXrp').textContent='Scanning XRP Ledger for '+xrpAcct+'\u2026';
+    const r=await xrpCall('account_info',{account:xrpAcct,ledger_index:'validated'});
+    if(r.status!=='success'||!r.account_data) throw new Error(r.error==='actNotFound'?'This XRP account is not activated (no balance).':'Could not read the XRP account.');
+    let lines=0;try{const l=await xrpCall('account_lines',{account:xrpAcct,ledger_index:'validated'});lines=(l.lines||[]).filter(x=>Number(x.balance)>0).length}catch{}
+    $('whoXrp').textContent='XRP: '+xrpAcct+' (only native XRP; '+(lines?lines+' trustline token(s) are not supported':'trustline tokens are not supported')+')';
+    const native=BigInt(r.account_data.Balance);
+    if(native>0n) found.xrp={id:'xrp',name:'XRP',sym:'XRP',nd:6,native,tokens:[],nfts:[]};
+    draw();$('s3').hidden=false;$('xrpBox').hidden=!found.xrp;step(3);say('');
+  }catch(e){err(e)}
+}
+async function xrpDest(){
+  const v=$('destXrp').value.trim(),t=$('destXrpTag').value.trim();
+  if(/^[XT][1-9A-HJ-NP-Za-km-z]{30,}$/.test(v)){say('X-addresses are not supported. Use the classic address that starts with r, plus the destination tag as a separate number.','er');return null}
+  if(!(await xrpValid(v))){say('Enter a valid XRP classic address (starts with r) for your new wallet first.','er');return null}
+  if(v===xrpAcct){say('The new XRP address is the same as the connected wallet.','er');return null}
+  if(t!==''&&!(/^\d{1,10}$/.test(t)&&Number(t)<=4294967295)){say('The destination tag must be a whole number up to 4294967295.','er');return null}
+  const r=await xrpCall('account_info',{account:v,ledger_index:'validated'});
+  const exists=r.status==='success'&&!!r.account_data;
+  if(exists){
+    const f=r.account_data.Flags||0;
+    if((f&0x00020000)&&t==='') {say('The new XRP address requires a destination tag (it is probably an exchange deposit address). Enter the tag.','er');return null}
+    if(f&0x01000000){say('The new XRP address has Deposit Authorization on and may reject the payment. Use a different address.','er');return null}
+  }
+  return {addr:v,tag:t===''?null:Number(t),exists};
+}
+async function waitXrp(hash){
+  for(let i=0;i<30;i++){
+    await new Promise(x=>setTimeout(x,3000));
+    let r=null;try{r=await xrpCall('tx',{transaction:hash})}catch{}
+    if(r&&r.validated){
+      const code=r.meta&&r.meta.TransactionResult;
+      if(code!=='tesSUCCESS') throw new Error('The XRP payment failed on the ledger ('+code+').');
+      return;
+    }
+  }
+  throw new Error('Timed out waiting for the XRP payment. Check an XRP explorer before retrying.');
+}
+async function migrateXrp(d){
+  const r=found.xrp;if(!r||r.skip?.has('native')||r.native<=0n) return;
+  setSt('xrp','Preparing','wait');
+  const acc=await xrpCall('account_info',{account:xrpAcct,ledger_index:'validated'});
+  if(acc.status!=='success') throw new Error('Could not read the XRP account.');
+  const res=await xrpReserves();
+  const bal=BigInt(acc.account_data.Balance),owners=BigInt(acc.account_data.OwnerCount||0);
+  const reserve=res.base+res.inc*owners;
+  const amt=bal-reserve-10000n; // keep the account reserve plus 0.01 XRP for the fee
+  if(amt<=0n) throw new Error('XRP: the balance does not exceed the account reserve plus fee.');
+  if(!d.exists&&amt<res.base) throw new Error('XRP: the new address is not activated, and a first payment must be at least '+Number(res.base)/1e6+' XRP.');
+  setSt('xrp','Awaiting approval','wait');setProg('Approve the XRP payment in GemWallet.');
+  const hash=await window.xrpBridge.send(d.addr,amt.toString(),d.tag);
+  await waitXrp(hash);
+  prog.n++;setSt('xrp','Submitted','ok');notes.push('XRP transaction: '+hash);
+}
+// ---------- NEAR (Wallet Selector), native NEAR only ----------
+const NEARRPC=['https://free.rpc.fastnear.com','https://rpc.mainnet.near.org'];
+let nearAcct='';
+function nearValid(a){return a.length>=2&&a.length<=64&&/^(([a-z\d]+[\-_])*[a-z\d]+\.)*([a-z\d]+[\-_])*[a-z\d]+$/.test(a)}
+async function nearView(id){
+  let last;
+  for(const u of NEARRPC){
+    try{
+      const j=await timeout(fetch(u,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:'m',method:'query',params:{request_type:'view_account',finality:'final',account_id:id}})}).then(x=>x.json()),12000);
+      const str=JSON.stringify(j.error||'')+JSON.stringify((j.result&&j.result.error)||'');
+      if(/UNKNOWN_ACCOUNT|does not exist/i.test(str)) return null;
+      if(j.result&&j.result.amount!==undefined) return j.result;
+    }catch(e){last=e}
+  }
+  throw last||new Error('NEAR RPC servers are unreachable.');
+}
+async function connectNear(){
+  try{
+    if(!window.nearBridge) return say('The NEAR connection did not load. Make sure trust-btc.js is deployed next to index.html.','er');
+    nearAcct=await window.nearBridge.connect();
+    if(!nearAcct) throw new Error('The NEAR wallet did not share an account.');
+    $('bNear').hidden=true;hideS1();step(2);$('s2').hidden=false;
+    $('whoNear').hidden=false;$('whoNear').textContent='Scanning NEAR for '+nearAcct+'\u2026';
+    const a=await nearView(nearAcct);
+    if(!a) throw new Error('This NEAR account does not exist on mainnet.');
+    $('whoNear').textContent='NEAR: '+nearAcct+' (only native NEAR; tokens and NFTs are not supported)';
+    const native=BigInt(a.amount);
+    if(native>0n) found.near={id:'near',name:'NEAR',sym:'NEAR',nd:24,native,tokens:[],nfts:[]};
+    draw();$('s3').hidden=false;$('nearBox').hidden=!found.near;step(3);say('');
+  }catch(e){err(e)}
+}
+async function nearDest(){
+  const v=$('destNear').value.trim().toLowerCase();
+  if(!nearValid(v)){say('Enter a valid NEAR account (for example name.near or a 64-character hex address) for your new wallet first.','er');return ''}
+  if(v===nearAcct){say('The new NEAR account is the same as the connected wallet.','er');return ''}
+  if(!/^[0-9a-f]{64}$/.test(v)){
+    const x=await nearView(v);
+    if(!x){say('That NEAR account does not exist yet, so a transfer would fail. Create it first, or use the 64-character hex address.','er');return ''}
+  }
+  return v;
+}
+async function migrateNear(dest){
+  const r=found.near;if(!r||r.skip?.has('native')||r.native<=0n) return;
+  setSt('near','Preparing','wait');
+  const a=await nearView(nearAcct);
+  if(!a) throw new Error('NEAR: could not read the account.');
+  const amount=BigInt(a.amount),locked=BigInt(a.locked||0),storage=BigInt(a.storage_usage||0)*(10n**19n);
+  const need=storage>locked?storage-locked:0n;
+  const amt=amount-need-10n**22n; // keep the storage deposit plus 0.01 NEAR for gas
+  if(amt<=0n) throw new Error('NEAR: the balance does not exceed the storage reserve plus fee.');
+  setSt('near','Awaiting approval','wait');setProg('Approve the NEAR transfer in your wallet.');
+  const hash=await window.nearBridge.send(dest,amt.toString());
+  prog.n++;setSt('near','Submitted','ok');notes.push('NEAR transfer sent'+(hash?' ('+hash+')':'')+'. Confirm it in an explorer.');
+}
+// ---------- Aptos (official Wallet Adapter), native APT only ----------
+const APTAPI='https://fullnode.mainnet.aptoslabs.com/v1';
+let aptAcct='';
+function aptNorm(a){
+  if(!/^0x[0-9a-fA-F]{1,64}$/.test(a)) return '';
+  const h=a.slice(2).toLowerCase().padStart(64,'0');
+  if(/^0{63}[0-9a-f]$/.test(h)) return ''; // 0x0 to 0xf are reserved system addresses
+  return '0x'+h;
+}
+function pick(title,names){return new Promise(res=>{
+  const d=$('dlg');$('dTitle').textContent=title;$('dAddr').hidden=true;
+  const u=$('dLines');u.innerHTML='';$('dOk').hidden=true;
+  const fin=v=>{d.close();$('dOk').hidden=false;res(v)};
+  names.forEach(n=>{const li=document.createElement('li'),b=document.createElement('button');b.className='btn ghost sm';b.style.margin='4px 0';b.textContent=n;b.onclick=()=>fin(n);li.appendChild(b);u.appendChild(li)});
+  $('dNo').onclick=()=>fin('');d.oncancel=e=>{e.preventDefault();fin('')};d.showModal()})}
+async function aptBalance(addr){
+  const r=await timeout(fetch(APTAPI+'/accounts/'+addr+'/balance/'+encodeURIComponent('0x1::aptos_coin::AptosCoin')),15000);
+  if(r.status===404) return 0n; // account does not exist yet
+  if(!r.ok) throw new Error('Could not read the Aptos balance.');
+  const t=(await r.text()).trim().replace(/"/g,'');
+  if(!/^\d+$/.test(t)) throw new Error('Could not read the Aptos balance.');
+  return BigInt(t);
+}
+async function connectApt(){
+  try{
+    if(!window.aptosBridge) return say('The Aptos connection did not load. Make sure trust-btc.js is deployed next to index.html.','er');
+    const names=window.aptosBridge.list();
+    if(!names.length) return say('No Aptos wallet detected. Install an Aptos wallet such as Petra or Nightly, then reload.','er');
+    const name=names.length===1?names[0]:await pick('Choose your Aptos wallet',names);
+    if(!name) return;
+    const a=await window.aptosBridge.connect(name);
+    const n=aptNorm(a);
+    if(!n) throw new Error('The wallet returned an address this page cannot use.');
+    aptAcct=n;
+    $('bApt').hidden=true;hideS1();step(2);$('s2').hidden=false;
+    $('whoApt').hidden=false;$('whoApt').textContent='Scanning Aptos for '+aptAcct+'\u2026';
+    const native=await aptBalance(aptAcct);
+    $('whoApt').textContent='Aptos: '+aptAcct+' (only native APT; other tokens and NFTs are not supported)';
+    if(native>0n) found.apt={id:'apt',name:'Aptos',sym:'APT',nd:8,native,tokens:[],nfts:[]};
+    draw();$('s3').hidden=false;$('aptBox').hidden=!found.apt;step(3);say('');
+  }catch(e){err(e)}
+}
+function aptDest(){
+  const v=aptNorm($('destApt').value.trim());
+  if(!v){say('Enter a valid Aptos address (0x followed by up to 64 hex characters) for your new wallet first.','er');return ''}
+  if(v===aptAcct){say('The new Aptos address is the same as the connected wallet.','er');return ''}
+  return v;
+}
+async function waitApt(hash){
+  for(let i=0;i<30;i++){
+    await new Promise(x=>setTimeout(x,3000));
+    let j=null;try{const r=await fetch(APTAPI+'/transactions/by_hash/'+hash);if(r.ok) j=await r.json()}catch{}
+    if(j&&j.type!=='pending_transaction'&&'success' in j){
+      if(!j.success) throw new Error('The Aptos transfer failed on-chain ('+(j.vm_status||'unknown')+').');
+      return;
+    }
+  }
+  throw new Error('Timed out waiting for the Aptos transfer. Check an Aptos explorer before retrying.');
+}
+async function migrateApt(dest){
+  const r=found.apt;if(!r||r.skip?.has('native')||r.native<=0n) return;
+  setSt('apt','Preparing','wait');
+  const bal=await aptBalance(aptAcct),amt=bal-3000000n; // keep 0.03 APT: covers the gas limit of 0.02 APT set on the transfer
+  if(amt<=0n) throw new Error('Aptos: the balance does not cover the network fee.');
+  setSt('apt','Awaiting approval','wait');setProg('Approve the APT transfer in your wallet.');
+  const hash=await window.aptosBridge.send(dest,amt.toString());
+  await waitApt(hash);
+  prog.n++;setSt('apt','Submitted','ok');notes.push('Aptos transaction: '+hash);
+}
+// ---------- Hyperliquid HyperCore spot balances (same address as the connected EVM wallet) ----------
+const HLAPI='https://api.hyperliquid.xyz';
+const hlPost=(path,body)=>timeout(fetch(HLAPI+path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}).then(x=>x.json()),15000);
+function decScale(v,d){const [a,b='']=String(v).split('.');return BigInt(a||'0')*10n**BigInt(d)+BigInt((b+'0'.repeat(d)).slice(0,d)||'0')}
+function decStr(v,d){const s=v.toString().padStart(d+1,'0'),i=s.length-d,f=s.slice(i).replace(/0+$/,'');return s.slice(0,i)+(f?'.'+f:'')}
+async function hlTokens(){
+  const [meta,st]=await Promise.all([hlPost('/info',{type:'spotMeta'}),hlPost('/info',{type:'spotClearinghouseState',user:acct})]);
+  const byIdx={};(meta.tokens||[]).forEach(t=>{byIdx[t.index]=t});
+  const out=[];
+  for(const b of (st.balances||[])){
+    const t=byIdx[b.token];if(!t) continue;
+    const dec=Number(t.weiDecimals),avail=decScale(b.total,dec)-decScale(b.hold,dec); // withdrawable = total - hold
+    if(avail<=0n) continue;
+    out.push({sym:String(t.name).slice(0,12),addr:t.name+':'+t.tokenId,bal:avail,dec,canon:!!t.isCanonical});
+  }
+  return out;
+}
+async function hlPerps(){
+  const cs=await hlPost('/info',{type:'clearinghouseState',user:acct});
+  return {wd:decScale((cs&&cs.withdrawable)||'0',6),pos:((cs&&cs.assetPositions)||[]).length};
+}
+async function scanHL(){
+  const tk=await hlTokens();
+  let pp={wd:0n,pos:0};try{pp=await hlPerps()}catch{}
+  if(!tk.length&&pp.wd<=0n) return null;
+  const r={id:'hl',name:'Hyperliquid (HyperCore)',sym:'',nd:18,native:0n,tokens:[],nfts:[],skip:new Set(),hlPositions:pp.pos};
+  tk.forEach(k=>{r.tokens.push({sym:k.sym,addr:k.addr,bal:k.bal,dec:k.dec});if(!k.canon) r.skip.add(k.addr)}); // non-canonical tokens start unselected
+  if(pp.wd>0n) r.tokens.push({sym:'USDC (perps)',addr:'perps:usdc',bal:pp.wd,dec:6});
+  return r;
+}
+async function hlSign(types,primary,message){
+  const signer=await new ethers.BrowserProvider(window.ethereum).getSigner();
+  const domain={name:'HyperliquidSignTransaction',version:'1',chainId:42161,verifyingContract:'0x0000000000000000000000000000000000000000'};
+  return ethers.Signature.from(await signer.signTypedData(domain,{[primary]:types},message));
+}
+async function hlPostAction(action,nonce,sig){
+  const res=await hlPost('/exchange',{action,nonce,signature:{r:sig.r,s:sig.s,v:sig.v}});
+  if(!res||res.status!=='ok') throw new Error('Hyperliquid rejected the '+action.type+' request: '+(res&&typeof res.response==='string'?res.response:JSON.stringify(res)));
+}
+async function migrateHL(dest){
+  const r=found.hl,sel=r.tokens.filter(t=>!r.skip?.has(t.addr));
+  if(!sel.length) return;
+  setSt('hl','Preparing','wait');
+  // Hyperliquid user-signed actions use an EIP-712 domain with chainId 42161 (0xa4b1), so the wallet must be on Arbitrum One to sign. No gas is spent.
+  try{await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:'0xa4b1'}]})}
+  catch(e){
+    if(e.code!==4902) throw e;
+    const c=CHAINS.find(x=>x[0]===42161);
+    await window.ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:'0xa4b1',chainName:c[1],rpcUrls:[c[3]],nativeCurrency:{name:'ETH',symbol:'ETH',decimals:18}}]});
+  }
+  const signer=await new ethers.BrowserProvider(window.ethereum).getSigner();
+  if(ethers.getAddress(await signer.getAddress())!==acct) throw new Error('The active wallet account changed. Reload the page and reconnect.');
+  const to=dest.toLowerCase();
+  let spotSel=sel.filter(t=>t.addr!=='perps:usdc');
+  // 1) perps USDC: move the withdrawable amount from perps to spot (usdClassTransfer with toPerp false), then it is sent like any spot token
+  if(sel.some(t=>t.addr==='perps:usdc')){
+    const pp=await hlPerps();
+    if(pp.wd>0n){
+      const amount=decStr(pp.wd,6),nonce=Date.now();
+      setSt('hl','Awaiting approval','wait');setProg('Sign the move of '+amount+' USDC from perps to spot in your wallet.');
+      const sig=await hlSign([{name:'hyperliquidChain',type:'string'},{name:'amount',type:'string'},{name:'toPerp',type:'bool'},{name:'nonce',type:'uint64'}],'HyperliquidTransaction:UsdClassTransfer',{hyperliquidChain:'Mainnet',amount,toPerp:false,nonce});
+      await hlPostAction({type:'usdClassTransfer',hyperliquidChain:'Mainnet',signatureChainId:'0xa4b1',amount,toPerp:false,nonce},nonce,sig);
+      prog.n++;
+      await new Promise(x=>setTimeout(x,2000));
+      const u=(await hlTokens()).find(t=>t.addr.startsWith('USDC:'));
+      if(u&&!spotSel.some(t=>t.addr===u.addr)) spotSel.push({sym:u.sym,addr:u.addr,bal:u.bal,dec:u.dec});
+    }else{notes.push('Hyperliquid: no withdrawable perps USDC was available to move.');prog.t--}
+  }
+  // 2) spot tokens: one spotSend per token, using the live balance
+  const fresh={};(await hlTokens()).forEach(t=>{fresh[t.addr]=t});
+  for(const t of spotSel){
+    const f=fresh[t.addr];
+    if(!f){notes.push('Hyperliquid: '+t.sym+' has no transferable balance any more and was skipped.');prog.t--;continue}
+    const amount=decStr(f.bal,f.dec),time=Date.now();
+    setSt('hl','Awaiting approval','wait');setProg('Sign the '+t.sym+' transfer on Hyperliquid in your wallet.');
+    const sig=await hlSign([{name:'hyperliquidChain',type:'string'},{name:'destination',type:'string'},{name:'token',type:'string'},{name:'amount',type:'string'},{name:'time',type:'uint64'}],'HyperliquidTransaction:SpotSend',{hyperliquidChain:'Mainnet',destination:to,token:t.addr,amount,time});
+    await hlPostAction({type:'spotSend',hyperliquidChain:'Mainnet',signatureChainId:'0xa4b1',destination:to,token:t.addr,amount,time},time,sig);
+    prog.n++;
+  }
+  setSt('hl','Submitted','ok');
 }
 async function connect(){
   try{
@@ -340,12 +782,14 @@ async function connect(){
     $('rec').hidden=Object.values(caps).some(v=>['supported','ready'].includes(v?.atomic?.status));
     $('bConnect').hidden=true;hideS1();step(2);if(!ALCHEMY_KEY)say('NFT and full token discovery are off. Add an indexer key in the page config to enable them. Only native coins and common tokens are scanned.','wa');$('s2').hidden=false;$('who').textContent='Scanning '+CHAINS.length+' chains for '+acct+'\u2026';
     window.ethereum.on?.('accountsChanged',()=>location.reload());
+    try{const m=await hlPost('/info',{type:'spotMeta'});TOKENS[999]=(m.tokens||[]).filter(t=>t.evmContract&&t.evmContract.address).map(t=>[String(t.name).slice(0,12),ethers.getAddress(t.evmContract.address)])}catch{}
     let done=0,failed=[];
     await Promise.all(CHAINS.map(async c=>{
       try{const r=await scanChain(c);if(r.native>0n||r.tokens.length||r.nfts.length||r.del){found[c[0]]=r;draw()}}
       catch{failed.push(c[1])}
       $('who').textContent='Scanned '+(++done)+' of '+CHAINS.length+' chains for '+acct;
     }));
+    try{const hl=await scanHL();if(hl){found.hl=hl;draw()}}catch{}
     $('s3').hidden=false;$('evmBox').hidden=false;step(3);
     if(!Object.keys(found).length) $('list').innerHTML='<p class="mu">No balances found on these chains.</p>';
     if(failed.length) say('Could not reach: '+failed.join(', ')+'. Their RPC may be down; edit CHAINS to replace it.','wa');
@@ -368,7 +812,8 @@ function est(only){
     if(only&&!only.includes(r.id)) return;
     const k=r.tokens.filter(t=>!r.skip?.has(t.addr)).length+(r.native>0n&&!r.skip?.has('native')?1:0)+(r.nfts||[]).filter(g=>!r.skip?.has(g.key)).reduce((a,g)=>a+g.items.length,0);
     if(!k) return;c++;
-    if(r.id==='sol'||r.id==='btc'){n+=1;return}
+    if(r.id==='tron'||r.id==='hl'){n+=k;return}
+    if(r.id==='sol'||r.id==='btc'||r.id==='ton'||r.id==='xrp'||r.id==='near'||r.id==='apt'){n+=1;return}
     const st=caps['0x'+r.id.toString(16)]?.atomic?.status;
     if(st==='supported') n+=1;else if(st==='ready'){n+=2;up=true}else{n+=k;batch=false}
   });
@@ -411,7 +856,7 @@ function draw(){
     $('list').appendChild(c);
   });
 }
-async function migrate(id){
+async function migrate(id,destAddr){
   const r=found[id],hex='0x'+id.toString(16);
   const sel=r.tokens.filter(k=>!r.skip?.has(k.addr)).length+(r.native>0n&&!r.skip?.has('native')?1:0)+(r.nfts||[]).filter(g=>!r.skip?.has(g.key)).length;
   if(!sel) return; // nothing selected on this chain
@@ -423,7 +868,8 @@ async function migrate(id){
     await window.ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:hex,chainName:c[1],rpcUrls:[c[3]],nativeCurrency:{name:c[2],symbol:c[2],decimals:18}}]});
   }
   const prov=new ethers.BrowserProvider(window.ethereum);
-  const dest=ethers.getAddress($('dest').value.trim());
+  const CHN=id===999?10:1e9; // HyperEVM small blocks have a 2M gas limit, so keep each batch small
+  const dest=destAddr; // the address the user confirmed in the dialog, never re-read from the input
   const calls=[],lbls=[],skipped=[];let gas=0n;
   for(const k of r.tokens.filter(k=>!r.skip?.has(k.addr))){
     const data=iface.encodeFunctionData('transfer',[dest,k.bal]);
@@ -448,17 +894,18 @@ async function migrate(id){
   setSt(id,'Awaiting approval','wait');
   say(r.name+': '+(atomic?(up?'your wallet will first ask for a one-time smart-account (EIP-7702) upgrade, then 1 approval for the batch.':'your wallet supports batching, 1 approval needed.'):'no atomic batching reported. The page will first try one request for everything, and only then fall back to up to '+calls.length+' separate approvals.'));
   if(atomic){setProg((up?'Approve the one-time smart-account upgrade, then the batch':'Approve the batch')+' on '+r.name+' in your wallet.');if(up)prog.n++;
-    await prov.send('wallet_sendCalls',[{version:'2.0.0',from:acct,chainId:hex,atomicRequired:true,calls:calls.map(c=>({to:c.to,value:'0x'+c.value.toString(16),data:c.data}))}]);;prog.n++;
+    for(let i=0;i<calls.length;i+=CHN) await prov.send('wallet_sendCalls',[{version:'2.0.0',from:acct,chainId:hex,atomicRequired:true,calls:calls.slice(i,i+CHN).map(c=>({to:c.to,value:'0x'+c.value.toString(16),data:c.data}))}]);
+    prog.n++;
   }else{
-    let done=false;
+    let done=false,sentAny=false;
     const cs=calls.map(c=>({to:c.to,value:'0x'+c.value.toString(16),data:c.data}));
     const declined=e=>e.code===4001||e.code==='ACTION_REJECTED'||/reject|denied|cancel/i.test(e.shortMessage||e.message||'');
     setProg('Asking your wallet to approve everything on '+r.name+' in one request. If it cannot, you will approve one by one.');
     for(const v of ['2.0.0','1.0']){
       try{
-        await prov.send('wallet_sendCalls',[v==='2.0.0'?{version:v,from:acct,chainId:hex,atomicRequired:false,calls:cs}:{version:v,from:acct,chainId:hex,calls:cs}]);
+        for(let i=0;i<cs.length;i+=CHN){const g=cs.slice(i,i+CHN);await prov.send('wallet_sendCalls',[v==='2.0.0'?{version:v,from:acct,chainId:hex,atomicRequired:false,calls:g}:{version:v,from:acct,chainId:hex,calls:g}]);sentAny=true}
         done=true;break;
-      }catch(e){if(declined(e)) throw e}
+      }catch(e){if(declined(e)||sentAny) throw e}
     }
     if(done){prog.n+=calls.length}
     else{
@@ -500,7 +947,7 @@ async function migrate(id){
   }
   setSt(id,'Submitted','ok');say(r.name+' submitted.','ok');
 }
-let running=false,lastAuto='';
+let running=false;
 async function run(ids){
   if(running) return;running=true;
   try{await runInner(ids)}finally{running=false}
@@ -509,8 +956,8 @@ async function runInner(ids){
   try{
     if(!ids.length) return;
     const ev=ids.filter(i=>typeof i==='number'),sl=ids.includes('sol');
-    let d='',ds='',db='';
-    if(ev.length){
+    let d='',ds='',db='',dt='',dn='',dx=null,dnr='',da='';
+    if(ev.length||ids.includes('hl')){
       const v=$('dest').value.trim();
       if(!ethers.isAddress(v)) return say('Enter a valid EVM address (0x...) for your new wallet first.','er');
       d=ethers.getAddress(v);
@@ -518,27 +965,30 @@ async function runInner(ids){
     }
     if(sl){ds=solDest();if(!ds) return}
     if(ids.includes('btc')){db=await btcDest();if(!db) return}
+    if(ids.includes('tron')){dt=await tronDest();if(!dt) return}
+    if(ids.includes('ton')){dn=tonDest();if(!dn) return}
+    if(ids.includes('xrp')){dx=await xrpDest();if(!dx) return}
+    if(ids.includes('near')){dnr=await nearDest();if(!dnr) return}
+    if(ids.includes('apt')){da=aptDest();if(!da) return}
     const E=est(ids);
-    if(!(await ask({title:'Confirm destination',addr:[d&&'EVM: '+d,ds&&'Solana: '+ds,db&&'Bitcoin: '+db].filter(Boolean).join('\n'),lines:[E.n+' wallet approval'+(E.n===1?'':'s')+' across '+E.c+' chain'+(E.c===1?'':'s')+'.',...summ(ids),...(ids.includes('btc')?['Bitcoin: all spendable BTC is sent. If you hold Ordinals, inscriptions or runes, protect those coins in your wallet first.']:[]),'Check every character. Your wallet shows the recipient again with each approval.'],ok:'Confirm and continue'}))) return;
+    if(!(await ask({title:'Confirm destination',addr:[d&&'EVM: '+d,ds&&'Solana: '+ds,db&&'Bitcoin: '+db,dt&&'Tron: '+dt,dn&&'TON: '+dn,dx&&'XRP: '+dx.addr+(dx.tag!==null?' (tag '+dx.tag+')':''),dnr&&'NEAR: '+dnr,da&&'Aptos: '+da].filter(Boolean).join('\n'),lines:[E.n+' wallet approval'+(E.n===1?'':'s')+' across '+E.c+' chain'+(E.c===1?'':'s')+'.',...summ(ids),...(ids.includes('btc')?['Bitcoin: all spendable BTC is sent, minus a fee margin. If you hold Ordinals, inscriptions or runes, protect those coins in your wallet first.']:[]),...(ids.includes('tron')?['Tron: each token transfer burns TRX for energy, which can cost several TRX each if the wallet has no staked energy. TRX is sent last, keeping 2 TRX.']:[]),...(ids.includes('ton')?['TON: only native TON is sent (0.05 TON stays for fees). Jettons are not moved. The address is converted to non-bounceable form.']:[]),...(ids.includes('xrp')?['XRP: only native XRP is sent. The account reserve (about 1 XRP plus 0.2 XRP per owned object) and 0.01 XRP for the fee stay behind. Trustline tokens are not moved.']:[]),...(ids.includes('near')?['NEAR: only native NEAR is sent. The storage deposit and 0.01 NEAR for gas stay behind. Tokens and NFTs are not moved. Your wallet must not ask for full access to your account.']:[]),...(ids.includes('apt')?['Aptos: only native APT is sent. 0.03 APT stays for fees. Other tokens and NFTs are not moved.']:[]),...(ids.includes('hl')?['Hyperliquid: spot tokens and the withdrawable perps USDC move, one signature each, no gas. Your wallet will switch to Arbitrum One to sign. Staked HYPE, vault deposits and open orders are not moved.']:[]),...(ids.includes('hl')&&found.hl&&found.hl.hlPositions?['Hyperliquid: you have '+found.hl.hlPositions+' open perp position(s). Only withdrawable USDC moves; margin used by open positions stays until you close them.']:[]),'Compare the first and last 6 characters with the address you copied. Clipboard malware can swap addresses. Your wallet shows the recipient again with each approval.'],ok:'Confirm and continue'}))) return;
     prog={n:0,t:E.n};notes=[];$('pNext').hidden=true;
-    for(const id of ids){cur=id;await (id==='sol'?migrateSol(ds):id==='btc'?migrateBtc(db):migrate(id))}
+    for(const id of ids){cur=id;await (id==='sol'?migrateSol(ds):id==='btc'?migrateBtc(db):id==='tron'?migrateTron(dt):id==='ton'?migrateTon(dn):id==='xrp'?migrateXrp(dx):id==='near'?migrateNear(dnr):id==='apt'?migrateApt(da):id==='hl'?migrateHL(d):migrate(id,d))}
     setProg('Complete. '+prog.n+' approval'+(prog.n===1?'':'s')+' submitted.');$('pBar').style.width='100%';$('pNext').hidden=false;
     say('Done.'+(notes.length?' '+notes.join(' '):' Check each chain\u2019s explorer to confirm.'),'ok');
   }catch(e){err(e);if(cur)setSt(cur,'Stopped','er')}
 }
-$('bConnect').onclick=connect;$('bSol').onclick=connectSol;$('bBtc').onclick=connectBtc;
+$('bConnect').onclick=connect;$('bSol').onclick=connectSol;$('bBtc').onclick=connectBtc;$('bTron').onclick=connectTron;$('bTon').onclick=connectTon;$('bXrp').onclick=connectXrp;$('bNear').onclick=connectNear;$('bApt').onclick=connectApt;
 $('bAll').onclick=()=>run(IDS());
-let t2;$('destSol').addEventListener('input',()=>{clearTimeout(t2);t2=setTimeout(()=>{
-  const v=$('destSol').value.trim();
-  try{new solanaWeb3.PublicKey(v)}catch{return}
-  if(v!==lastAutoSol&&found.sol){lastAutoSol=v;run(['sol'])}
-},700)});
-let t3,lastAutoBtc='';$('destBtc').addEventListener('input',()=>{clearTimeout(t3);t3=setTimeout(async()=>{
-  const v=$('destBtc').value.trim();
-  if(v&&v!==lastAutoBtc&&found.btc&&await btcValid(v)){lastAutoBtc=v;run(['btc'])}
-},700)});
-let t;$('dest').addEventListener('input',()=>{clearTimeout(t);t=setTimeout(()=>{
-  const v=$('dest').value.trim();
-  if(v&&v!==lastAuto&&ethers.isAddress(v)&&Object.keys(found).length){lastAuto=v;run(IDS().filter(i=>typeof i==='number'))}
-},700)});
+// Pasting a valid address opens the confirmation dialog. Typing and autofill do not.
+$('dest').addEventListener('paste',()=>setTimeout(()=>{
+  if(ethers.isAddress($('dest').value.trim())&&Object.keys(found).length) run(IDS().filter(i=>typeof i==='number'||i==='hl'));
+},0));
+$('destSol').addEventListener('paste',()=>setTimeout(()=>{if(found.sol) run(['sol'])},0));
+$('destBtc').addEventListener('paste',()=>setTimeout(()=>{if(found.btc) run(['btc'])},0));
+$('destTron').addEventListener('paste',()=>setTimeout(()=>{if(found.tron) run(['tron'])},0));
+$('destTon').addEventListener('paste',()=>setTimeout(()=>{if(found.ton) run(['ton'])},0));
+$('destNear').addEventListener('paste',()=>setTimeout(()=>{if(found.near) run(['near'])},0));
+$('destApt').addEventListener('paste',()=>setTimeout(()=>{if(found.apt) run(['apt'])},0));
+// XRP has a second field (destination tag), so it starts from the Review and migrate button, not from a paste.
 </script></body></html>
